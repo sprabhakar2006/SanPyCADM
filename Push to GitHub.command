@@ -17,7 +17,7 @@ fi
 git diff --cached --quiet || git -c user.email="sprabhakar2006@gmail.com" -c user.name="Sanjeev Prabhakar" commit -q -m "SanPyCADM: ${1:-update}"
 git remote remove origin 2>/dev/null || true
 git remote add origin https://github.com/sprabhakar2006/sanpycadm.git
-git push -u origin main || { echo "!!! Push failed"; read -p "Press Enter..."; exit 1; }
+git push -u --force origin main || { echo "!!! Push failed"; read -p "Press Enter..."; exit 1; }
 git tag -f v1.0.0 && git push --force origin v1.0.0
 echo "Done. Builds: https://github.com/sprabhakar2006/sanpycadm/actions"
 echo "Release:     https://github.com/sprabhakar2006/sanpycadm/releases"
