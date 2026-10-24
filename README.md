@@ -11,9 +11,9 @@
 
 [Download](#download) · [First model](#your-first-model) · [B-rep or mesh](#choose-per-shape-b-rep-or-mesh) · [Features](#features) · [SanPyCAD](https://github.com/sprabhakar2006/SanPyCAD) · [SanPyCAD Brep](https://github.com/sprabhakar2006/sanpycad-brep)
 
-<!-- TODO: add a screenshot or recording, e.g. the tap example:
-<img src="docs/screenshot.png" width="820" alt="SanPyCADM: script on the left, a threaded tap rendered on the right">
--->
+<img src="docs/screenshot-tap.png" width="820" alt="SanPyCADM: a Python script on the left, a threaded tap rendered live on the right">
+
+<sub>A threaded tap: script on the left, live 3D result on the right.</sub>
 
 </div>
 
@@ -72,6 +72,16 @@ While a script runs, the line being executed is highlighted in the editor, so yo
 | `as_mesh(x)` | You want speed: long swept solids, threads, springs. Booleans run on [manifold3d](https://github.com/elalish/manifold) and the result is flat-shaded, as in SanPyCAD. |
 
 `difference()` switches to the mesh boolean as soon as one operand is a mesh. If an exact cut silently removes nothing (typical for an invalid multi-turn cutter), it falls back to the mesh boolean and says so in the console. Pass `exact=True` to force the exact cut.
+
+## Examples
+
+<table>
+<tr>
+<td width="33%" align="center"><img src="docs/screenshot-tap.png" alt="Threaded tap"><br><b>Threaded tap</b><br><sub>helix sweep, fast mesh boolean</sub></td>
+<td width="33%" align="center"><img src="docs/screenshot-star.png" alt="Hollow cylinder with a star cut-out and filleted edges"><br><b>Cylinder with a star cut-out</b><br><sub>exact B-rep, filleted edges</sub></td>
+<td width="33%" align="center"><img src="docs/screenshot-drill.png" alt="Drill bit"><br><b>Drill bit</b><br><sub>helical flutes with <code>p_line3d</code></sub></td>
+</tr>
+</table>
 
 ## How a model usually comes together
 
