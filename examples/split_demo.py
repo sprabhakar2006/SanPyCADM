@@ -1,0 +1,5 @@
+a = cube([30, 30, 20], center=True)
+b = cylinder(r=6, h=40, center=True)
+part = difference(swp(a), swp(b))
+top = split(part, swp_surf(plane([0, 0, 1], size=(100, 100), intercept=(0, 0, 3))), keep="top")
+show(top)

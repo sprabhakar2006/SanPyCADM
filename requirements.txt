@@ -1,0 +1,23 @@
+# SanPyCADM is B-rep only: every script builds real build123d/OCCT
+# solids (see backend/brep.py), so build123d is a hard dependency here,
+# unlike the mesh-based SanPyCAD apps. numpy is still needed for the
+# viewer JSON and STL/OBJ/SVG/DXF export triangle math.
+numpy
+build123d
+
+# Needed only if a script does `import ocad` -- the opt-in mesh/
+# point-list escape hatch (see backend/python_eval.py's module
+# docstring). A copy of ocad.py is bundled in backend/, but it
+# still needs these to actually import; several examples use it
+# (02_ocad_bridge_fillet.py, 05_woven_lamp_shade.py,
+# 06_mobile_stand.py, 07_flanged_bracket_assembly.py). Skip these if
+# you never plan to write scripts that reach for that toolkit.
+scipy
+sympy
+scikit-image
+
+# Optional, for a real desktop app window instead of opening a browser tab:
+pywebview
+
+# Optional: fast mesh boolean for very heavy swept solids (long threads/springs)
+manifold3d

@@ -1,0 +1,17 @@
+# NEVER commit the readable backend source -- only the encrypted .enc files ship
+backend/_protected_src/
+dist/
+build/
+.build_venv/
+launch_debug.log
+__pycache__/
+*.pyc
+.DS_Store
+hang*.log
+
+# local-only (not part of the repo)
+SanPyCADM.app/
+my_scripts/
+Fix SanPyCADM.command
+OLD-SanPyCADM-launcher.app/
+timing.log

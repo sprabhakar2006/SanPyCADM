@@ -1,0 +1,5 @@
+s1=prism(c1,path)
+p1=p_line3d(helix(7.5,15,3),4.5)
+p2=rot('z180',p1)
+r1=difference(s1,p1,p2)
+show(r1)

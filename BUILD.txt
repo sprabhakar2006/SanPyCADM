@@ -1,0 +1,7 @@
+Build SanPyCADM from source
+===========================
+  python packaging/build_bundle.py
+    -> dist/SanPyCADM.app + dist/SanPyCADM-mac.zip   (macOS)
+    -> dist\SanPyCADM-win.zip                         (Windows)
+Needs Python 3.10+ and: pip install build123d numpy scipy sympy scikit-image pywebview pyperclip pyinstaller
+Releases are built automatically by .github/workflows/build-installers.yml when a v* tag is pushed.
