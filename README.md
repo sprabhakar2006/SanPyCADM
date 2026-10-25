@@ -71,17 +71,11 @@ While a script runs, the line being executed is highlighted in the editor, so yo
 | `swp(x)` | You need an exact B-rep: fillets, chamfers, edge and face picking, STEP export. |
 | `as_mesh(x)` | You want speed: long swept solids, threads, springs. Booleans run on [manifold3d](https://github.com/elalish/manifold) and the result is flat-shaded, as in SanPyCAD. |
 
-`difference()` switches to the mesh boolean as soon as one operand is a mesh. If an exact cut silently removes nothing (typical for an invalid multi-turn cutter), it falls back to the mesh boolean and says so in the console. Pass `exact=True` to force the exact cut.
+SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unless you write `as_mesh()`, and `difference()` uses the mesh boolean only when an operand is a mesh. If an exact operation fails or is slow, the console says so, and you can tweak the model:
 
-## Examples
-
-<table>
-<tr>
-<td width="33%" align="center"><img src="docs/screenshot-tap.png" alt="Threaded tap"><br><b>Threaded tap</b><br><sub>helix sweep, fast mesh boolean</sub></td>
-<td width="33%" align="center"><img src="docs/screenshot-star.png" alt="Hollow cylinder with a star cut-out and filleted edges"><br><b>Cylinder with a star cut-out</b><br><sub>exact B-rep, filleted edges</sub></td>
-<td width="33%" align="center"><img src="docs/screenshot-drill.png" alt="Drill bit"><br><b>Drill bit</b><br><sub>helical flutes with <code>p_line3d</code></sub></td>
-</tr>
-</table>
+- **Fewer slices.** `swp(x, slices=60)` keeps the 60 most important sections of a long sweep (spread out, with extra where the shape changes fast), which often turns a failing or very slow build or cut into a quick, valid one. `slices=0` keeps every section.
+- **Flat-faced solid.** `swp(x, faceted=True)` builds the solid from flat triangle faces, which OpenCASCADE reads in seconds. It is still a B-rep, but not a smooth surface.
+- **Mesh for that shape.** `as_mesh(x)` on both operands runs the fast mesh boolean.
 
 ## How a model usually comes together
 
