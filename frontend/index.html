@@ -3839,6 +3839,11 @@ function showMeshes(meshes) {
       roughness: 0.4,
       metalness: 0.08,
       flatShading: !!m.user_mesh,
+      // Push filled faces slightly back in depth so coincident/overlapping
+      // surfaces and the edge lines drawn on them don't z-fight (flicker).
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
     const mesh = new THREE.Mesh(geo, mat);
     // Python-mode only: sol1[i][j]-style labels for this mesh's
