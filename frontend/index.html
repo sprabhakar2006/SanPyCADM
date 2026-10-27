@@ -10462,7 +10462,7 @@ renderScene();
     split: ['Cuts a solid with a plane (or a Face for a curved cut) and keeps the top, bottom or both halves.', 'Wrong half? use keep="bottom", or flip the plane normal.'],
     fillet: ['Rounds selected edges of ONE solid with a radius. Pick edges with Pick Edges/Faces.', 'If it errors or the corner is complex, use fillet_by_offset() with a line along the edge.'],
     chamfer: ['Bevels selected edges (flat cut instead of a round).', 'If it errors, try a smaller distance, or fillet_by_offset().'],
-    fillet_by_offset: ['A blend along ANY line: between two solids (pipe into plate) or a corner of ONE solid (pass the same solid twice).', 'Wrong side? add auto_dir=1 (or call suggest_fillet_dir). Jagged? raise s or resample the line with equidistant_path().'],
+    fillet_by_offset: ['A blend along ANY line: between two solids (pipe into plate) or a corner of ONE solid (pass the same solid twice).', 'Wrong side? add auto_dir=1 (or call suggest_fillet_dir). Jagged? raise s or resample the line with equidistant_path(). Result type: default = open surface; d=-1 (or +1) = closed solid thickened by d (best as a cutter); as_solid=True = closed solid from wedge sections (may fail on tight twists).'],
     suggest_fillet_dir: ['Tells you the +/- sign for r1/r2 so the fillet lands on the right side. Prints its suggestion.', 'Or just pass auto_dir=1 to fillet_by_offset().'],
     convert_3lines2fillet: ['Low-level: builds the fillet grid from a spine and two blend lines. fillet_by_offset() calls it for you.', 'Prefer fillet_by_offset() unless you already have the three lines.'],
     difference: ['Subtracts the other shapes from the first: holes, pockets, slots.', 'Make the cutter a bit longer than the part so no thin skin is left.'],
