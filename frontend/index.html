@@ -7728,6 +7728,7 @@ async function renderScene() {
   spinner.style.display = 'flex';
   btnRender.disabled = true;
   const code = cm.getValue();
+  const _renderT0 = performance.now();
   startProgressPolling();
   try {
     const resp = await fetch('/render', {
@@ -7783,6 +7784,10 @@ async function renderScene() {
     stopProgressPolling();
     spinner.style.display = 'none';
     btnRender.disabled = false;
+    const _secs = (performance.now() - _renderT0) / 1000;
+    logLine('Total render time: ' + (_secs >= 60
+      ? Math.floor(_secs / 60) + ' min ' + (_secs % 60).toFixed(1) + ' s'
+      : _secs.toFixed(1) + ' s'), 'info');
   }
 }
 
