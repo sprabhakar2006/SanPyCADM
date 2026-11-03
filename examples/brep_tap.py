@@ -1,0 +1,5 @@
+s1=prism(c1,path)
+p1=helix(7.5,2.01,20,5)
+s2=path_extrude_open(sec1,p1)
+r1=difference(swp(s1),swp(s2))
+show(r1)
