@@ -7701,10 +7701,14 @@ function setRunningLine(n) {
 function startProgressPolling() {
   stopProgressPolling();
   const t0 = Date.now();
-  progressTimer = setInterval(async () => {
+  let myTimer = null;
+  progressTimer = myTimer = setInterval(async () => {
     try {
       const r = await fetch('/progress', { cache: 'no-store' });
       const d = await r.json();
+      // a poll that was already in flight when the render finished must not
+      // overwrite the final status (it left "rendering..." stuck on screen)
+      if (progressTimer === null || myTimer !== progressTimer) return;
       setRunningLine(d.line || null);
       const secs = Math.round((Date.now() - t0) / 1000);
       setStatus('busy', 'rendering… ' + (d.line ? 'line ' + d.line + ' · ' : '') + secs + 's');
