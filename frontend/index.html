@@ -3754,7 +3754,22 @@ function computeWeldedVertexNormals(geo, precision = 4, creaseAngleDeg = CREASE_
   // normal is within the crease-angle threshold of THIS corner's own
   // face.
   const cosThreshold = Math.cos(creaseAngleDeg * Math.PI / 180);
-  const normals = new Float32Array(vertexCount * 3);
+  // The mesh is INDEXED and its vertices are shared between faces (the
+  // backend welds them). A shared vertex can only carry ONE normal, so
+  // writing a per-corner normal into it let whichever face came last win
+  // -- on a sharp edge (e.g. a thin flat rim meeting a wall) that blended
+  // the flat face's shading into the wall and made the edge look
+  // rounded. Fix: when two faces sharing a vertex need DIFFERENT normals,
+  // give the second one its own copy of that vertex (same position, own
+  // normal). Returns the origin index of every appended vertex so
+  // per-vertex data (labels) can be extended to match.
+  const normals = [];
+  for (let i = 0; i < vertexCount; i++) normals.push(null);   // per original vertex: first normal
+  const extraPos = [];     // appended vertex positions
+  const extraNrm = [];     // appended vertex normals
+  const dupOf = [];        // origin vertex index for each appended vertex
+  const used = new Map();  // origVertexIndex -> [{n:[x,y,z], idx}] for appended copies
+  const newIndex = new Array(faceCount * 3);
   const acc = new THREE.Vector3(), fn = new THREE.Vector3(), fn2 = new THREE.Vector3();
   for (let f = 0; f < faceCount; f++) {
     fn.set(faceNormals[f * 3], faceNormals[f * 3 + 1], faceNormals[f * 3 + 2]);
@@ -3766,10 +3781,44 @@ function computeWeldedVertexNormals(geo, precision = 4, creaseAngleDeg = CREASE_
         if (f2 === f || fn.dot(fn2) >= cosThreshold) acc.add(fn2);
       }
       if (acc.lengthSq() > 1e-18) acc.normalize(); else acc.copy(fn);
-      normals[vi * 3] = acc.x; normals[vi * 3 + 1] = acc.y; normals[vi * 3 + 2] = acc.z;
+      const base = normals[vi];
+      if (base === null) {                       // first user of this vertex
+        normals[vi] = [acc.x, acc.y, acc.z];
+        newIndex[f * 3 + k] = vi;
+      } else if (base[0] * acc.x + base[1] * acc.y + base[2] * acc.z > 0.9999) {
+        newIndex[f * 3 + k] = vi;                // same normal: share
+      } else {
+        let list = used.get(vi);
+        if (!list) { list = []; used.set(vi, list); }
+        let hit = -1;
+        for (const e of list) {
+          if (e.n[0] * acc.x + e.n[1] * acc.y + e.n[2] * acc.z > 0.9999) { hit = e.idx; break; }
+        }
+        if (hit < 0) {
+          hit = vertexCount + extraPos.length / 3;
+          extraPos.push(posAttr.getX(vi), posAttr.getY(vi), posAttr.getZ(vi));
+          extraNrm.push(acc.x, acc.y, acc.z);
+          dupOf.push(vi);
+          list.push({ n: [acc.x, acc.y, acc.z], idx: hit });
+        }
+        newIndex[f * 3 + k] = hit;
+      }
     }
   }
-  geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  const total = vertexCount + dupOf.length;
+  const outPos = new Float32Array(total * 3);
+  const outNrm = new Float32Array(total * 3);
+  for (let i = 0; i < vertexCount; i++) {
+    outPos[i * 3] = posAttr.getX(i); outPos[i * 3 + 1] = posAttr.getY(i); outPos[i * 3 + 2] = posAttr.getZ(i);
+    const n = normals[i];
+    if (n) { outNrm[i * 3] = n[0]; outNrm[i * 3 + 1] = n[1]; outNrm[i * 3 + 2] = n[2]; }
+  }
+  outPos.set(extraPos, vertexCount * 3);
+  outNrm.set(extraNrm, vertexCount * 3);
+  geo.setAttribute('position', new THREE.BufferAttribute(outPos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(outNrm, 3));
+  geo.setIndex(newIndex);
+  return dupOf;
 }
 
 // Builds a non-indexed LineSegments position buffer (same flat "every
@@ -3806,7 +3855,11 @@ function showMeshes(meshes) {
     geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
     const idx = m.faces.flat();
     geo.setIndex(idx);
-    computeWeldedVertexNormals(geo, 4, CREASE_ANGLE_DEG);
+    const _dupOf = computeWeldedVertexNormals(geo, 4, CREASE_ANGLE_DEG);
+    // appended (split) vertices inherit the labels of the vertex they copy
+    if (_dupOf && _dupOf.length && Array.isArray(m.vertex_labels)) {
+      m.vertex_labels = m.vertex_labels.concat(_dupOf.map(i => m.vertex_labels[i]));
+    }
     // A shaded solid and a shaded open shell/surface are otherwise
     // pixel-for-pixel IDENTICAL (same fill, same normals) -- there is no
     // shading cue that tells them apart, which is exactly what made a
