@@ -431,6 +431,38 @@
     z-index: 50;
   }
   #probe-panel.active { display: flex; }
+  /* Intersection panel (Find intersection lines between two shapes) --
+     same look as #probe-panel; its inner rows reuse the .probe-* classes. */
+  #isect-panel {
+    position: fixed; top: 12px; right: 290px; width: 280px; max-height: 60vh;
+    background: var(--float-bg); color: var(--text); border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25); font-size: 12px;
+    display: none; flex-direction: column; overflow: hidden; z-index: 51;
+  }
+  #isect-panel.active { display: flex; }
+  #isect-panel-header {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; background: rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.1); gap: 8px; cursor: move; touch-action: none;
+  }
+  #isect-panel-title { font-weight: 600; color: var(--accent); white-space: nowrap; }
+  #isect-panel-close {
+    flex-shrink: 0; font-size: 14px; line-height: 1; padding: 1px 6px; font-family: inherit;
+    background: var(--panel-bg-2); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 4px; cursor: pointer;
+  }
+  #isect-panel-close:hover { color: var(--text); border-color: var(--accent); }
+  #isect-panel-body { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 8px 10px; font-family: "SF Mono", Menlo, Consolas, monospace; }
+  .isect-pick-btn.active { background: #ff9800; color: #2b1600; border-color: #ff9800; }
+  #isect-chains { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+  .isect-chain-row {
+    display: flex; align-items: center; gap: 6px; padding: 4px 6px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg-2);
+  }
+  .isect-chain-row.selected { border-color: #ff9800; background: rgba(255,152,0,0.14); }
+  .isect-chain-row:hover { border-color: var(--accent); }
+  .isect-chain-label { flex: 1; color: var(--text); font-size: 11px; }
+  #btn-isect.active { background: #ff9800 !important; color: #2b1600 !important; border-color: #ff9800 !important; }
   #probe-hover-tip {
     /* Pick Edges/Faces hover preview -- follows the cursor, showing
        whichever real edge/face index is currently under it (see the
@@ -1068,6 +1100,7 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
     </select>
       <button id="btn-dim3d" title="Click points directly on the 3D model (vertices, hole/shaft centers, edges, or faces) to place permanent labeled dimension lines, like the Drawing tab's Linear tool but in 3D. Every pick is shown highlighted in yellow -- its real edge/face curve, plus a hole or shaft's own axis -- as soon as it resolves, so it's always clear what a dimension actually attached to. Click a placed dimension (or its row in the panel) to select it and see that highlight again, then Delete or Clear All"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span class="lbl">Dimension</span></button>
       <button id="btn-probe-box" title="Click directly on edges or faces in the 3D view to add their real indices to a list, ready to insert into your script for fillet()/chamfer()/offset()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 16l5-5 2 2-5 5H8z"/></svg><span class="lbl">Pick Edges/Faces</span></button>
+      <button id="btn-isect" title="Find the intersection line(s) between two solids/surfaces/planes: pick A and B (click them in the 3D view, or type their names), pick the line you want from the list, and it writes the script line for you -- no typing surface_solid_open_intersection()/contiguous_chains() by hand"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8c5-5 13 5 18 0M3 16c5-5 13 5 18 0"/><circle cx="12" cy="12" r="1.8"/></svg><span class="lbl">Intersection</span></button>
     </div>
     <span class="tb-sep"></span>
     <div class="tb-group g-model">
@@ -1203,6 +1236,51 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
           </div>
         </div>
         <div id="probe-panel-resize-handle" title="Drag to resize this panel"></div>
+      </div>
+      <div id="isect-panel">
+        <div id="isect-panel-header" title="Drag anywhere here to move this panel">
+          <span id="isect-panel-title">&#8646; Intersection lines</span>
+          <button id="isect-panel-close" title="Close">&times;</button>
+        </div>
+        <div id="isect-panel-body">
+          <div class="probe-hint">Render first. Click <b>Pick</b> next to A or B, then click that shape in the 3D view (or just type its variable name -- e.g. a plane that isn't shown). Put the surface/plane in A and the solid in B.</div>
+          <div class="probe-field-row">
+            <span class="probe-field-label">A</span>
+            <input id="isect-a" class="probe-field" type="text" placeholder="e.g. pl1" autocapitalize="off" autocorrect="off" spellcheck="false">
+            <button id="isect-pick-a" class="probe-field-btn isect-pick-btn" title="Then click a shape in the 3D view to fill A">Pick</button>
+          </div>
+          <div class="probe-field-row">
+            <span class="probe-field-label">&nbsp;</span>
+            <select id="isect-kind-a" class="probe-field" title="How A is shown/built: swp_surf = open surface or plane, swp = solid (ends capped or open), swp_c = closed-loop solid like a doughnut. Auto guesses; real B-rep shapes ignore this."><option value="auto">Auto</option><option value="surface">swp_surf (surface / plane)</option><option value="solid_capped">swp (solid, ends capped)</option><option value="solid">swp (solid, ends open)</option><option value="closed">swp_c (closed loop / doughnut)</option></select>
+          </div>
+          <div class="probe-field-row">
+            <span class="probe-field-label">B</span>
+            <input id="isect-b" class="probe-field" type="text" placeholder="e.g. s4" autocapitalize="off" autocorrect="off" spellcheck="false">
+            <button id="isect-pick-b" class="probe-field-btn isect-pick-btn" title="Then click a shape in the 3D view to fill B">Pick</button>
+          </div>
+          <div class="probe-field-row">
+            <span class="probe-field-label">&nbsp;</span>
+            <select id="isect-kind-b" class="probe-field" title="How B is shown/built: swp_surf = open surface or plane, swp = solid (ends capped or open), swp_c = closed-loop solid like a doughnut. Auto guesses; real B-rep shapes ignore this."><option value="auto">Auto</option><option value="surface">swp_surf (surface / plane)</option><option value="solid_capped">swp (solid, ends capped)</option><option value="solid">swp (solid, ends open)</option><option value="closed">swp_c (closed loop / doughnut)</option></select>
+          </div>
+          <div class="probe-field-row">
+            <button id="isect-swap" class="probe-field-btn" title="Swap A and B">&#8645; Swap</button>
+            <button id="isect-find" class="probe-field-btn primary" title="Compute the intersection of A and B and list each separate line found">Find lines</button>
+          </div>
+          <div id="isect-status" class="probe-hint"></div>
+          <div id="isect-chains"></div>
+          <div class="probe-field-row">
+            <span class="probe-field-label" style="width:44px">Name</span>
+            <input id="isect-name" class="probe-field" type="text" value="il1" autocapitalize="off" autocorrect="off" spellcheck="false" title="Variable name the line is stored under in your script">
+          </div>
+          <div class="probe-field-row">
+            <span class="probe-field-label" style="width:44px">Points</span>
+            <input id="isect-npts" class="probe-field" type="text" placeholder="blank = as is, e.g. 200" autocapitalize="off" autocorrect="off" spellcheck="false" title="Optional: resample the line to this many evenly spaced points (equidistant_pathc for a closed loop, equidistant_path for an open line)">
+          </div>
+          <div class="probe-list-actions">
+            <button id="isect-clear" title="Remove the preview lines from the 3D view">Clear</button>
+            <button id="isect-insert" class="primary" title="Write the selected line into your script">Insert into script</button>
+          </div>
+        </div>
       </div>
       <div id="dim3d-panel">
         <div id="dim3d-panel-header" title="Drag anywhere here to move this panel">
@@ -5358,6 +5436,214 @@ async function findSeamEdges() {
   }
 }
 probeSeamFindBtn.addEventListener('click', findSeamEdges);
+
+// ---------------------------------------------------------------------
+// Intersection panel -- pick two shapes (click them in the 3D view or
+// type their names), find the intersection line(s) between them
+// (/isect_chains -> kernel_process.py's _isect_chains), preview each in
+// the 3D view, pick one, and write the equivalent script line:
+//
+//   il1 = contiguous_chains(surface_solid_open_intersection(A, B))[k]
+//
+// (optionally wrapped in equidistant_path()/equidistant_pathc() to
+// resample), replacing hand-typing that whole call chain.
+// ---------------------------------------------------------------------
+const isectPanel = document.getElementById('isect-panel');
+const isectBtn = document.getElementById('btn-isect');
+const isectAInput = document.getElementById('isect-a');
+const isectBInput = document.getElementById('isect-b');
+const isectNameInput = document.getElementById('isect-name');
+const isectNptsInput = document.getElementById('isect-npts');
+const isectStatusEl = document.getElementById('isect-status');
+const isectChainsEl = document.getElementById('isect-chains');
+const isectPickABtn = document.getElementById('isect-pick-a');
+const isectPickBBtn = document.getElementById('isect-pick-b');
+const isectFindBtn = document.getElementById('isect-find');
+const isectGroup = new THREE.Group();
+scene.add(isectGroup);
+let isectChains = [];
+let isectSel = -1;
+let isectCall = '';
+let isectPickTarget = null; // 'a' | 'b' | null
+let isectPickDown = null;
+
+function isectSetStatus(msg) { isectStatusEl.textContent = msg || ''; }
+
+function isectClearPreview() {
+  while (isectGroup.children.length) {
+    const o = isectGroup.children[0];
+    isectGroup.remove(o);
+    o.traverse((c) => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+  }
+}
+
+function isectDrawPreview(hoverIdx) {
+  // Only ONE line is drawn: the selected one (orange). Hovering a row in
+  // the list temporarily shows that row's line instead (light blue).
+  isectClearPreview();
+  const radius = guiFnTubeRadius() * 1.6;
+  const idx = (hoverIdx !== undefined && hoverIdx !== null) ? hoverIdx : isectSel;
+  const ch = isectChains[idx];
+  if (!ch) return;
+  const mat = new THREE.MeshBasicMaterial({ color: idx === isectSel && (hoverIdx === undefined || hoverIdx === null) ? 0xff9800 : 0x4fc3f7, depthTest: false });
+  const g = buildTubeSegment(ch.points.map(varPointToVec3), radius, mat);
+  g.renderOrder = 999;
+  isectGroup.add(g);
+}
+
+function isectRenderChains() {
+  isectChainsEl.innerHTML = '';
+  isectChains.forEach((ch, i) => {
+    const row = document.createElement('div');
+    row.className = 'isect-chain-row' + (i === isectSel ? ' selected' : '');
+    const label = document.createElement('span');
+    label.className = 'isect-chain-label';
+    label.textContent = `Line ${i + 1}: ${ch.n} pts, length ${ch.length.toFixed(2)}${ch.closed ? ' (closed)' : ' (open)'}`;
+    row.appendChild(label);
+    row.addEventListener('click', () => {
+      isectSel = i;
+      isectRenderChains();
+      isectDrawPreview();
+    });
+    row.addEventListener('mouseenter', () => { if (i !== isectSel) isectDrawPreview(i); });
+    row.addEventListener('mouseleave', () => isectDrawPreview());
+    isectChainsEl.appendChild(row);
+  });
+}
+
+function isectSetPickTarget(t) {
+  isectPickTarget = (isectPickTarget === t) ? null : t;
+  isectPickABtn.classList.toggle('active', isectPickTarget === 'a');
+  isectPickBBtn.classList.toggle('active', isectPickTarget === 'b');
+  if (isectPickTarget) isectSetStatus(`Click the shape to use as ${isectPickTarget.toUpperCase()} in the 3D view…`);
+}
+isectPickABtn.addEventListener('click', () => isectSetPickTarget('a'));
+isectPickBBtn.addEventListener('click', () => isectSetPickTarget('b'));
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!isectPickTarget) return;
+  isectPickDown = { x: e.clientX, y: e.clientY, button: e.button };
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!isectPickTarget) return;
+  const start = isectPickDown;
+  isectPickDown = null;
+  if (!start || start.button !== 0) return;
+  if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 4) return; // orbit drag, not a click
+  const rect = renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1);
+  const hit = pickFaceHit(ndc);
+  if (!hit) { isectSetStatus('No shape under the click -- click directly on a shown solid/surface (or type its name).'); return; }
+  if (!hit.sourceVar) {
+    isectSetStatus('Couldn\'t tell which variable that shape belongs to (not shown with a plain show(x)) -- type its name instead.');
+    return;
+  }
+  (isectPickTarget === 'a' ? isectAInput : isectBInput).value = hit.sourceVar;
+  isectSetStatus(`${isectPickTarget.toUpperCase()} = ${hit.sourceVar}`);
+  isectSetPickTarget(isectPickTarget); // toggles it off
+});
+
+document.getElementById('isect-swap').addEventListener('click', () => {
+  const t = isectAInput.value; isectAInput.value = isectBInput.value; isectBInput.value = t;
+});
+
+async function isectFind() {
+  const a = isectAInput.value.trim(), b = isectBInput.value.trim();
+  if (!a || !b) { isectSetStatus('Pick or type both A and B first.'); return; }
+  isectFindBtn.disabled = true;
+  isectSetStatus('Finding intersection…');
+  isectChains = []; isectSel = -1;
+  isectRenderChains(); isectClearPreview();
+  try {
+    const resp = await fetch('/isect_chains', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a, b, ka: document.getElementById('isect-kind-a').value, kb: document.getElementById('isect-kind-b').value }),
+    });
+    const data = await resp.json();
+    if (data.error) { isectSetStatus(data.error); return; }
+    isectChains = data.chains || [];
+    isectCall = data.call || '';
+    if (!isectChains.length) {
+      isectSetStatus(`No intersection found between '${a}' and '${b}'. Do they actually cross? Try swapping A/B.`);
+      return;
+    }
+    isectSel = 0;
+    isectRenderChains();
+    isectDrawPreview();
+    isectSetStatus(`Using ${isectCall} (A: ${(data.kinds||[])[0]}, B: ${(data.kinds||[])[1]}). Found ${isectChains.length} line${isectChains.length === 1 ? '' : 's'}, longest first -- click one, then Insert.`);
+  } catch (e) {
+    isectSetStatus('Intersection failed: ' + e);
+  } finally {
+    isectFindBtn.disabled = false;
+  }
+}
+isectFindBtn.addEventListener('click', isectFind);
+
+document.getElementById('isect-insert').addEventListener('click', async () => {
+  if (isectSel < 0 || !isectChains[isectSel]) { isectSetStatus('Find lines and select one first.'); return; }
+  const ch = isectChains[isectSel];
+  const name = isectNameInput.value.trim();
+  if (!/^[A-Za-z_]\w*$/.test(name)) { isectSetStatus(`"${name}" isn't a valid variable name.`); return; }
+  let expr = `contiguous_chains(${isectCall})[${ch.index}]`;
+  const nRaw = isectNptsInput.value.trim();
+  if (nRaw) {
+    const n = parseInt(nRaw, 10);
+    if (!(n >= 3) || String(n) !== nRaw) { isectSetStatus('Points must be a whole number >= 3 (or blank).'); return; }
+    expr = `${ch.closed ? 'equidistant_pathc' : 'equidistant_path'}(${expr}, ${n})`;
+  }
+  const marker = `# <- intersection tool: ${name}`;
+  // Warn if this name is already used by something else (a different
+  // assignment in the script, or a variable already in memory). Re-inserting
+  // over this tool's own line for the same name is fine -- no warning.
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const assignRe = new RegExp(`^\\s*${esc}\\s*=(?!=)`);
+  const usedInScript = cm.getValue().split('\n').some((ln) => assignRe.test(ln) && !ln.includes(marker));
+  const usedInMemory = !usedInScript && (lastKnownVarNames || []).includes(name)
+    && !cm.getValue().includes(marker);
+  if (usedInScript || usedInMemory) {
+    const ok = await probeConfirm(`"${name}" is already used by another variable ${usedInScript ? 'in your script' : 'in memory'}. `
+      + `Inserting will overwrite it with this intersection line. Continue? (Cancel and pick a different Name to keep both.)`);
+    if (!ok) { isectSetStatus(`Cancelled -- "${name}" is already in use; pick a different Name.`); return; }
+  }
+  insertOrReplaceMarkedLine(marker, `${name} = ${expr}  ${marker}`);
+  cm.focus();
+  isectSetStatus(`Inserted ${name} into the script.`);
+  logLine(`Inserted \`${name} = ${expr}\`.`, 'info');
+});
+
+document.getElementById('isect-clear').addEventListener('click', () => {
+  isectChains = []; isectSel = -1; isectRenderChains(); isectClearPreview(); isectSetStatus('');
+});
+
+function isectSetOpen(open) {
+  isectPanel.classList.toggle('active', open);
+  isectBtn.classList.toggle('active', open);
+  if (!open) { isectPickTarget = null; isectPickABtn.classList.remove('active'); isectPickBBtn.classList.remove('active'); isectClearPreview(); }
+  else if (isectChains.length) isectDrawPreview();
+}
+isectBtn.addEventListener('click', () => isectSetOpen(!isectPanel.classList.contains('active')));
+document.getElementById('isect-panel-close').addEventListener('click', () => isectSetOpen(false));
+
+(function () {
+  const header = document.getElementById('isect-panel-header');
+  let drag = null;
+  header.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    const r = isectPanel.getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    header.setPointerCapture(e.pointerId);
+  });
+  header.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const w = isectPanel.offsetWidth;
+    const left = Math.min(Math.max(0, e.clientX - drag.dx), window.innerWidth - w);
+    const top = Math.min(Math.max(0, e.clientY - drag.dy), window.innerHeight - 40);
+    isectPanel.style.left = left + 'px'; isectPanel.style.top = top + 'px'; isectPanel.style.right = 'auto';
+  });
+  header.addEventListener('pointerup', () => { drag = null; });
+})();
 
 // Click-to-Pick: click directly on an edge or a face in the 3D view.
 // Edges reuse pickEdge() (already defined above for Measure mode) to
