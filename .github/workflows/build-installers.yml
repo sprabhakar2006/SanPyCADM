@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             label: macOS (Apple Silicon)
             asset: SanPyCADM-mac-arm64.zip
           - os: windows-latest
