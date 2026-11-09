@@ -10689,7 +10689,9 @@ async function loadBackendStatus() {
     if (data.build123d) {
       badge.textContent = 'build123d ready';
       badge.className = 'badge exact';
-      badge.title = 'build123d is installed -- scripts can build real B-rep solids.';
+      const v = data.versions || {};
+      const vt = [v.build123d ? 'build123d ' + v.build123d : '', v.ocp ? 'OpenCASCADE (OCP) ' + v.ocp : ''].filter(Boolean).join(' | ');
+      badge.title = 'build123d is installed -- scripts can build real B-rep solids.' + (vt ? '  ' + vt : '');
     } else {
       badge.textContent = 'build123d missing';
       badge.className = 'badge approx';

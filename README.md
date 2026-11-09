@@ -164,6 +164,8 @@ The packaged app keeps its settings and log (`SanPyCADM.log`) in `~/Library/Appl
 
 Created by **Sanjeev Prabhakar**. The ocad geometry library does the modeling work: every primitive, fillet, offset, sweep and hull. SanPyCADM is the editor, viewer, sketcher and B-rep layer around it.
 
+The packaged app currently bundles **build123d 0.13.0** and **OpenCASCADE (OCCT) 8.0.1** (via `cadquery-ocp-novtk 8.0.1.1.0`). Hover the "build123d ready" badge in the status bar to see the versions of the running install.
+
 Built with [build123d](https://build123d.readthedocs.io/) / OpenCASCADE, [manifold3d](https://github.com/elalish/manifold), [CodeMirror](https://codemirror.net/) and [Three.js](https://threejs.org/).
 
 ## License
