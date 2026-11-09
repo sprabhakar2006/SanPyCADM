@@ -1230,6 +1230,35 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
             <input id="probe-fillet-radius" class="probe-field" type="text" placeholder="e.g. 2" title="Fillet radius to apply to the currently captured list -- see the Max fillet radius readout above for what's actually achievable" autocapitalize="off" autocorrect="off" spellcheck="false">
             <button id="probe-fillet-apply" class="probe-field-btn primary" title="Writes VAR = fillet(VAR, LIST, RADIUS) into the script (right after the captured list itself) and Renders immediately -- re-clicking with a different radius updates that same line rather than adding another">Apply fillet</button>
           </div>
+          <details id="ofillet-box" class="probe-hint" style="margin-top:6px">
+            <summary title="Fillet between the two faces of the picked edge chain by OFFSET lines instead of OCCT's fillet -- shows where the two offset lines land (with direction arrows) before anything is built">Offset fillet (live preview)</summary>
+            <div class="probe-hint">Pick the edge chain above (Edges mode), set the two offsets, and check the preview: <b style="color:#22d3ee">cyan</b> = line on face A, <b style="color:#ffa500">orange</b> = line on face B, white = the edge. Arrows point from the edge to each offset line. If a line is on the wrong side, press its flip button.</div>
+            <div class="probe-field-row">
+              <span class="probe-field-label" style="color:#22d3ee">A</span>
+              <input id="ofillet-r1" class="probe-field" type="text" value="3" title="Offset of line A from the edge (negative = other side)" autocapitalize="off" autocorrect="off" spellcheck="false">
+              <button id="ofillet-flip1" class="probe-field-btn" title="Flip side of line A (negates the offset)">&#8644;</button>
+            </div>
+            <div class="probe-field-row">
+              <span class="probe-field-label" style="color:#ffa500">B</span>
+              <input id="ofillet-r2" class="probe-field" type="text" value="-3" title="Offset of line B from the edge (negative = other side)" autocapitalize="off" autocorrect="off" spellcheck="false">
+              <button id="ofillet-flip2" class="probe-field-btn" title="Flip side of line B (negates the offset)">&#8644;</button>
+            </div>
+            <label class="probe-hint"><input type="checkbox" id="ofillet-show" checked> Show preview</label>
+            <label class="probe-hint" title="Where an offset line crosses itself (usually at corners of an edge chain) the loop is cut out automatically, on all three lines"><input type="checkbox" id="ofillet-clean" checked> Remove self-intersecting loops</label>
+            <div class="probe-field-row">
+              <span class="probe-field-label" style="width:auto">Op</span>
+              <select id="ofillet-op" class="probe-field" title="Cut = round an OUTER (convex) edge by removing the corner material; Add = fill an INNER (concave) corner; Auto picks from the geometry; None = only create the fillet solid">
+                <option value="auto" selected>Auto (cut outer / add inner)</option>
+                <option value="cut">Cut (round an outer edge)</option>
+                <option value="add">Add (fill an inner corner)</option>
+                <option value="none">None (just make the solid)</option>
+              </select>
+            </div>
+            <div id="ofillet-status" class="probe-hint"></div>
+            <div class="probe-list-actions">
+              <button id="ofillet-apply" class="primary" title="Writes the fillet_by_offset(...) line(s) into the script and renders">Apply offset fillet</button>
+            </div>
+          </details>
           <div class="probe-list-actions">
             <button id="probe-list-clear" title="Clear THIS named list (e.g. e1) -- other named lists you've captured are untouched">Clear list</button>
             <button id="probe-list-insert" class="primary" title="Write e1 = [...] (or whatever name is above) into the editor from this list">Insert list into script</button>
@@ -4914,6 +4943,7 @@ function renderProbeList() {
   }
   updateMaxFilletDisplay();
   updateProbeHighlight();
+  if (window.__ofilletUpdate) window.__ofilletUpdate();
 }
 probeListNameInput.addEventListener('input', () => {
   probeListStatus.textContent = '';
@@ -5023,9 +5053,12 @@ function filletLineMarker(name) { return `# <- probe fillet tool: ${name}`; }
 // happened (callers should ask the user to repeat their click/Add
 // rather than trying to chain it onto a mesh that just got rebuilt).
 async function revertListFilletIfLive(name) {
-  if (!markedLineIsLive(filletLineMarker(name))) return false;
+  const _ofLive = markedLineIsLive(`# <- probe offset fillet tool: ${name}`);
+  if (!markedLineIsLive(filletLineMarker(name)) && !_ofLive) return false;
   commentMarkedLine(listLineMarker(name));
   commentMarkedLine(filletLineMarker(name));
+  commentMarkedLine(`# <- probe offset fillet tool: ${name}`);
+  commentMarkedLine(`# <- probe offset fillet union: ${name}`);
   logLine(`'${name}' already has a fillet applied -- commenting it out and re-rendering so new picks land on the right edges…`, 'info');
   await renderScene();
   return true;
@@ -5072,7 +5105,7 @@ const probeChangeAcked = {};
 // revertListFilletIfLive) and lets the change proceed. Returns false if
 // the user cancelled.
 async function guardListChange(name) {
-  const filletLive = markedLineIsLive(filletLineMarker(name));
+  const filletLive = markedLineIsLive(filletLineMarker(name)) || markedLineIsLive(`# <- probe offset fillet tool: ${name}`);
   const listLive = markedLineIsLive(listLineMarker(name));
   if ((filletLive || listLive) && !probeChangeAcked[name]) {
     const msg = filletLive
@@ -5172,6 +5205,202 @@ probeFilletApplyBtn.addEventListener('click', () => {
   cm.focus();
   probeListStatus.textContent = '';
   logLine(`Inserted \`${varName} = fillet(${varName}, ${name}, ${radius})\` -- rendering…`, 'info');
+  renderScene();
+});
+
+// ---------------------------------------------------------------------
+// Offset fillet (live preview): shows the two offset lines + direction
+// arrows for the captured edge chain (POST /ofillet_preview, which runs
+// brep.offset_fillet_preview() -- the same topology-based line builder
+// fillet_by_offset() uses, but WITHOUT building the fillet surface), so
+// the side/size of each line can be checked and flipped before the
+// (slower) fillet_by_offset() call is written into the script.
+// ---------------------------------------------------------------------
+const ofilletBox = document.getElementById('ofillet-box');
+const ofilletR1 = document.getElementById('ofillet-r1');
+const ofilletR2 = document.getElementById('ofillet-r2');
+const ofilletShow = document.getElementById('ofillet-show');
+const ofilletOp = document.getElementById('ofillet-op');
+const ofilletClean = document.getElementById('ofillet-clean');
+let ofilletConvex = null;
+const ofilletStatus = document.getElementById('ofillet-status');
+const ofilletGroup = new THREE.Group();
+scene.add(ofilletGroup);
+let ofilletTimer = null;
+let ofilletReqId = 0;
+
+function clearOfilletPreview() {
+  for (const child of [...ofilletGroup.children]) {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      if (child.material.dispose) child.material.dispose();
+    }
+    ofilletGroup.remove(child);
+  }
+}
+
+function ofilletNum(el) {
+  const v = Number(String(el.value).trim());
+  return Number.isFinite(v) && v !== 0 ? v : null;
+}
+
+function drawOfilletLine(pts, color, radius) {
+  const v = pts.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
+  if (v.length < 2) return;
+  const path = new THREE.CurvePath();
+  for (let i = 0; i < v.length - 1; i++) path.add(new THREE.LineCurve3(v[i], v[i + 1]));
+  const geo = new THREE.TubeGeometry(path, Math.max(1, v.length - 1), radius, 6, false);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, depthTest: false }));
+  mesh.renderOrder = 998;
+  ofilletGroup.add(mesh);
+}
+
+function drawOfilletArrows(spine, line, color, maxDim) {
+  const n = spine.length;
+  const count = Math.min(7, n);
+  for (let k = 0; k < count; k++) {
+    const i = count === 1 ? 0 : Math.round(k * (n - 1) / (count - 1));
+    const o = new THREE.Vector3(spine[i][0], spine[i][1], spine[i][2]);
+    const t = new THREE.Vector3(line[i][0], line[i][1], line[i][2]);
+    const dir = t.clone().sub(o);
+    const len = dir.length();
+    if (len < 1e-9) continue;
+    dir.normalize();
+    const arrow = new THREE.ArrowHelper(dir, o, len, color, Math.min(len * 0.35, maxDim * 0.03), Math.min(len * 0.2, maxDim * 0.015));
+    arrow.line.material.depthTest = false;
+    arrow.cone.material.depthTest = false;
+    arrow.line.renderOrder = 999;
+    arrow.cone.renderOrder = 999;
+    ofilletGroup.add(arrow);
+  }
+}
+
+function updateOfilletPreview() {
+  clearTimeout(ofilletTimer);
+  const myReq = ++ofilletReqId;
+  if (!ofilletBox.open || !ofilletShow.checked || probeKind !== 'edges') {
+    clearOfilletPreview();
+    return;
+  }
+  const list = currentList();
+  const vars = listVars(list);
+  const r1 = ofilletNum(ofilletR1), r2 = ofilletNum(ofilletR2);
+  if (!list.length) {
+    clearOfilletPreview();
+    ofilletStatus.textContent = 'Capture the edge chain first (click edges in the 3D view).';
+    return;
+  }
+  if (vars.length !== 1) {
+    clearOfilletPreview();
+    ofilletStatus.textContent = 'Offset fillet needs edges from ONE shape (this list spans ' + vars.length + ').';
+    return;
+  }
+  if (r1 === null || r2 === null) {
+    clearOfilletPreview();
+    ofilletStatus.textContent = 'Type a non-zero offset for both A and B.';
+    return;
+  }
+  ofilletStatus.textContent = 'Computing preview…';
+  ofilletTimer = setTimeout(async () => {
+    try {
+      const resp = await fetch('/ofillet_preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variable: vars[0], indices: list.map((e) => e.idx), r1, r2, clean_loops: ofilletClean.checked }),
+      });
+      const d = await resp.json();
+      if (myReq !== ofilletReqId) return;
+      clearOfilletPreview();
+      if (d.error) { ofilletStatus.textContent = 'Preview failed: ' + d.error; return; }
+      ofilletConvex = (d.convex === true || d.convex === false) ? d.convex : null;
+      const maxDim = getModelMaxDim();
+      const tr = Math.max(maxDim * 0.003, 0.04);
+      drawOfilletLine(d.spine, 0xffffff, tr * 0.8);
+      drawOfilletLine(d.a, 0x22d3ee, tr);
+      drawOfilletLine(d.b, 0xffa500, tr);
+      drawOfilletArrows(d.spine, d.a, 0x22d3ee, maxDim);
+      drawOfilletArrows(d.spine, d.b, 0xffa500, maxDim);
+      // sanity checks on the geometry the user is about to build from
+      const n = Math.min(d.spine.length, d.a.length, d.b.length);
+      let dotSum = 0, dA = 0, dB = 0;
+      for (let i = 0; i < n; i++) {
+        const ua = [d.a[i][0] - d.spine[i][0], d.a[i][1] - d.spine[i][1], d.a[i][2] - d.spine[i][2]];
+        const ub = [d.b[i][0] - d.spine[i][0], d.b[i][1] - d.spine[i][1], d.b[i][2] - d.spine[i][2]];
+        const la = Math.hypot(...ua), lb = Math.hypot(...ub);
+        dA += la; dB += lb;
+        if (la > 1e-9 && lb > 1e-9) dotSum += (ua[0] * ub[0] + ua[1] * ub[1] + ua[2] * ub[2]) / (la * lb);
+      }
+      dA /= n; dB /= n;
+      const msgs = [];
+      if (dotSum / n > 0.3) msgs.push('A and B lie on the SAME side of the edge -- flip one of them');
+      if (dA < 0.5 * Math.abs(r1)) msgs.push('line A came out much shorter than ' + Math.abs(r1) + ' (' + dA.toFixed(2) + ') -- face too narrow or wrong side');
+      if (dB < 0.5 * Math.abs(r2)) msgs.push('line B came out much shorter than ' + Math.abs(r2) + ' (' + dB.toFixed(2) + ') -- face too narrow or wrong side');
+      ofilletStatus.textContent = msgs.length
+        ? '⚠ ' + msgs.join('; ')
+        : 'OK (' + (ofilletConvex === true ? 'outer edge -> cut' : ofilletConvex === false ? 'inner corner -> add' : 'edge type unknown') + '): A offset ' + dA.toFixed(2) + ', B offset ' + dB.toFixed(2) + ' on ' + n + ' stations' + (d.closed ? ' (closed loop)' : '') + (d.removed ? '; removed ' + d.removed + ' self-intersecting station(s)' : '') + '.';
+    } catch (e) {
+      if (myReq !== ofilletReqId) return;
+      clearOfilletPreview();
+      ofilletStatus.textContent = 'Preview failed: ' + e;
+    }
+  }, 350);
+}
+window.__ofilletUpdate = updateOfilletPreview;
+ofilletBox.addEventListener('toggle', updateOfilletPreview);
+ofilletShow.addEventListener('change', updateOfilletPreview);
+ofilletR1.addEventListener('input', updateOfilletPreview);
+ofilletR2.addEventListener('input', updateOfilletPreview);
+ofilletOp.addEventListener('change', updateOfilletPreview);
+ofilletClean.addEventListener('change', updateOfilletPreview);
+function ofilletFlip(el) {
+  const v = Number(String(el.value).trim());
+  if (Number.isFinite(v) && v !== 0) { el.value = String(-v); updateOfilletPreview(); }
+}
+document.getElementById('ofillet-flip1').addEventListener('click', () => ofilletFlip(ofilletR1));
+document.getElementById('ofillet-flip2').addEventListener('click', () => ofilletFlip(ofilletR2));
+
+function ofilletLineMarker(name) { return `# <- probe offset fillet tool: ${name}`; }
+function ofilletUnionMarker(name) { return `# <- probe offset fillet union: ${name}`; }
+
+document.getElementById('ofillet-apply').addEventListener('click', () => {
+  if (probeKind !== 'edges') {
+    ofilletStatus.textContent = 'Switch to Edges mode first.';
+    return;
+  }
+  const list = currentList();
+  if (!list.length) { ofilletStatus.textContent = 'Capture at least one edge first.'; return; }
+  const vars = listVars(list);
+  if (vars.length !== 1) { ofilletStatus.textContent = 'Offset fillet needs edges from ONE shape.'; return; }
+  const r1 = ofilletNum(ofilletR1), r2 = ofilletNum(ofilletR2);
+  if (r1 === null || r2 === null) { ofilletStatus.textContent = 'Type a non-zero offset for both A and B.'; return; }
+  const info = insertListLine();
+  if (!info) return;
+  const { name, varName } = info;
+  const fvar = 'f_' + name;
+  let op = ofilletOp.value;
+  if (op === 'auto') op = ofilletConvex === false ? 'add' : 'cut';   // unknown -> cut (the usual "round an edge" case)
+  // A CUTTER must stick out slightly past the two faces (negative tangent_inset),
+  // otherwise a hair-thin skin of material is left over the cut. A filler that is
+  // ADDED must overlap the material instead (the default, positive inset).
+  const insetArg = op === 'cut'
+    ? `, tangent_inset=${(-0.02 * Math.max(Math.abs(r1), Math.abs(r2))).toPrecision(3)}`
+    : '';
+  insertOrReplaceMarkedLine(ofilletLineMarker(name),
+    `${fvar} = fillet_by_offset(${name}, ${varName}, ${varName}, ${r1}, ${r2}, auto_dir=0, as_solid=1${insetArg}${ofilletClean.checked ? '' : ', clean_loops=False'})  ${ofilletLineMarker(name)}`);
+  if (op === 'cut') {
+    insertOrReplaceMarkedLine(ofilletUnionMarker(name),
+      `${varName} = difference(${varName}, swp(${fvar}))  ${ofilletUnionMarker(name)}`);
+  } else if (op === 'add') {
+    insertOrReplaceMarkedLine(ofilletUnionMarker(name),
+      `${varName} = union([${varName}, swp(${fvar})])  ${ofilletUnionMarker(name)}`);
+  } else {
+    commentMarkedLine(ofilletUnionMarker(name));
+  }
+  // hide the preview overlay so the finished result is visible
+  ofilletShow.checked = false;
+  clearOfilletPreview();
+  ofilletStatus.textContent = 'Applied. Preview hidden so you can see the result -- tick "Show preview" to see the offset lines again.';
+  cm.focus();
+  logLine(`Inserted \`${fvar} = fillet_by_offset(${name}, ${varName}, ${varName}, ${r1}, ${r2}, ...)\` -- rendering…`, 'info');
   renderScene();
 });
 
