@@ -5378,17 +5378,19 @@ document.getElementById('ofillet-apply').addEventListener('click', () => {
   const fvar = 'f_' + name;
   let op = ofilletOp.value;
   if (op === 'auto') op = ofilletConvex === false ? 'add' : 'cut';   // unknown -> cut (the usual "round an edge" case)
-  // A CUTTER must stick out slightly past the two faces (negative tangent_inset),
-  // otherwise a hair-thin skin of material is left over the cut. A filler that is
-  // ADDED must overlap the material instead (the default, positive inset).
-  const insetArg = op === 'cut'
-    ? `, tangent_inset=${(-0.02 * Math.max(Math.abs(r1), Math.abs(r2))).toPrecision(3)}`
-    : '';
+  // CUT: use the thick-skin cutter (d=...), the same recipe that works by hand --
+  // far faster and more robust in the boolean than a pinched wedge whose flat
+  // sides coincide with the solid's faces. ADD: a wedge that overlaps the material.
+  const dv = Math.max(Math.abs(r1), Math.abs(r2));
+  const cleanArg = ofilletClean.checked ? '' : ', clean_loops=False';
+  const callArgs = op === 'cut'
+    ? `auto_dir=1, d=${dv}${cleanArg}`
+    : `auto_dir=0, as_solid=1${cleanArg}`;
   insertOrReplaceMarkedLine(ofilletLineMarker(name),
-    `${fvar} = fillet_by_offset(${name}, ${varName}, ${varName}, ${r1}, ${r2}, auto_dir=0, as_solid=1${insetArg}${ofilletClean.checked ? '' : ', clean_loops=False'})  ${ofilletLineMarker(name)}`);
+    `${fvar} = fillet_by_offset(${name}, ${varName}, ${varName}, ${r1}, ${r2}, ${callArgs})  ${ofilletLineMarker(name)}`);
   if (op === 'cut') {
     insertOrReplaceMarkedLine(ofilletUnionMarker(name),
-      `${varName} = difference(${varName}, swp(${fvar}))  ${ofilletUnionMarker(name)}`);
+      `${varName} = difference(${varName}, swp_c(${fvar}))  ${ofilletUnionMarker(name)}`);
   } else if (op === 'add') {
     insertOrReplaceMarkedLine(ofilletUnionMarker(name),
       `${varName} = union([${varName}, swp(${fvar})])  ${ofilletUnionMarker(name)}`);

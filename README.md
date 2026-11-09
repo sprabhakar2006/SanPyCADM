@@ -52,7 +52,7 @@ show(difference(a, b))
 
 Both shapes are exact B-rep solids, so you can now click **Pick Edges/Faces**, select the edges of the hole and fillet them.
 
-Now something that is hard in any CAD: a threaded tap. Choose **tap** from the **Examples** dropdown (one of 12, see [Examples](#examples-and-video-tutorials)), or write it yourself:
+Now something that is hard in any CAD: a threaded tap. Choose **tap** from the **Examples** dropdown (one of 13, see [Examples](#examples-and-video-tutorials)), or write it yourself:
 
 ```python
 s1 = prism(c1, path)                           # the rod
@@ -79,7 +79,7 @@ SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unl
 
 ## Examples and video tutorials
 
-The **Examples** dropdown in the toolbar loads **12 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
+The **Examples** dropdown in the toolbar loads **13 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
 
 | Example | What it shows |
 |---|---|
@@ -89,7 +89,8 @@ The **Examples** dropdown in the toolbar loads **12 ready-made models**. Most co
 | `cup` | A turned cup: `prism()`, `split()` and offset lines |
 | `hollow_cylinder_with_star` | `solid_line_vector()` extrusions, plane cuts and a star cut-out |
 | `split_demo` | Cutting a solid with `split(..., keep="top")` |
-| `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`) |
+| `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`); the model from the SanPyCADM Project 4 video |
+| `SanPyCADM Project3` | A plate with a pocket and a pattern of sketched holes, with `fillet()`, `chamfer()` and an offset fillet (`fillet_by_offset`) around a rim |
 | `SanPyCADM Project5` | A multi-part housing: swept body, bolt holes, bosses, `fillet()` and offset fillets, built step by step |
 | `SanPyCADM Project6` | Sphere shells with extruded cut-outs from several 2D sketches |
 | `SanPyCADM Project7` | A flat plate from one sketched outline (`clean_profile()`) with sketched holes |
@@ -104,13 +105,13 @@ The **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)** 
 |---|---|
 | [SanPyCADM Project 1](https://youtu.be/waSNXv0eEF8) | not included |
 | [SanPyCADM Project 2](https://youtu.be/uJZ9jHFqYiQ) | not included |
-| [SanPyCADM Project 3](https://youtu.be/we4jgJjZFyU) | not included |
-| [SanPyCADM Project 4](https://youtu.be/ksuRJgnGJIk) | not included |
+| [SanPyCADM Project 3](https://youtu.be/we4jgJjZFyU) | `SanPyCADM Project3` |
+| [SanPyCADM Project 4](https://youtu.be/ksuRJgnGJIk) | `wavy_tray_fillet` |
 | [SanPyCADM Project 7](https://youtu.be/s36XOSCyl9Y) | `SanPyCADM Project7` |
 | [SanPyCADM Project 8](https://youtu.be/fBgigryKavI) | `SanPyCADM Project8` |
 | [SanPyCADM Project 9](https://youtu.be/XPLlQ9QJJwA) | `SanPyCADM Project9` |
 
-`SanPyCADM Project5` and `SanPyCADM Project6` are in the Examples dropdown too, and don't have a video yet.
+`SanPyCADM Project5` and `SanPyCADM Project6` are in the Examples dropdown too, and don't have a video yet. Projects 1 and 2 are not included as examples.
 
 ## How a model usually comes together
 
