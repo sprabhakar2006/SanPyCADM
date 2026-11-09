@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Video tutorials](https://img.shields.io/badge/YouTube-video%20tutorials-red?logo=youtube&logoColor=white)](https://www.youtube.com/@sanjeevprabhakar3837/videos)
 
-[Download](#download) · [First model](#your-first-model) · [B-rep or mesh](#choose-per-shape-b-rep-or-mesh) · [Features](#features) · [SanPyCAD](https://github.com/sprabhakar2006/SanPyCAD) · [SanPyCAD Brep](https://github.com/sprabhakar2006/sanpycad-brep)
+[Download](#download) · [First model](#your-first-model) · [Examples](#examples-and-video-tutorials) · [B-rep or mesh](#choose-per-shape-b-rep-or-mesh) · [Features](#features) · [SanPyCAD](https://github.com/sprabhakar2006/SanPyCAD) · [SanPyCAD Brep](https://github.com/sprabhakar2006/sanpycad-brep)
 
 <img src="docs/screenshot-tap.png" width="820" alt="SanPyCADM: a Python script on the left, a threaded tap rendered live on the right">
 
@@ -52,7 +52,7 @@ show(difference(a, b))
 
 Both shapes are exact B-rep solids, so you can now click **Pick Edges/Faces**, select the edges of the hole and fillet them.
 
-Now something that is hard in any CAD: a threaded tap. Choose **tap** from the **Examples** dropdown, or write it yourself:
+Now something that is hard in any CAD: a threaded tap. Choose **tap** from the **Examples** dropdown (one of 12, see [Examples](#examples-and-video-tutorials)), or write it yourself:
 
 ```python
 s1 = prism(c1, path)                           # the rod
@@ -77,6 +77,41 @@ SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unl
 - **Flat-faced solid.** `swp(x, faceted=True)` builds the solid from flat triangle faces, which OpenCASCADE reads in seconds. It is still a B-rep, but not a smooth surface.
 - **Mesh for that shape.** `as_mesh(x)` on both operands runs the fast mesh boolean.
 
+## Examples and video tutorials
+
+The **Examples** dropdown in the toolbar loads **12 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
+
+| Example | What it shows |
+|---|---|
+| `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
+| `brep_tap` | The same tap as an exact B-rep |
+| `drill` | A twisted drill bit from `p_line3d(helix(...))` |
+| `cup` | A turned cup: `prism()`, `split()` and offset lines |
+| `hollow_cylinder_with_star` | `solid_line_vector()` extrusions, plane cuts and a star cut-out |
+| `split_demo` | Cutting a solid with `split(..., keep="top")` |
+| `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`) |
+| `SanPyCADM Project5` | A multi-part housing: swept body, bolt holes, bosses, `fillet()` and offset fillets, built step by step |
+| `SanPyCADM Project6` | Sphere shells with extruded cut-outs from several 2D sketches |
+| `SanPyCADM Project7` | A flat plate from one sketched outline (`clean_profile()`) with sketched holes |
+| `SanPyCADM Project8` | Two stacked extrusions with a pattern of sketched holes |
+| `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
+
+Every example is a plain `.py` file in the `examples/` folder, and the sketches that go with it (where it has any) are stored next to it as `<name>.py.sketch.json` and load automatically.
+
+The **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)** has step-by-step modeling sessions recorded in the app itself: the 2D sketch first, then the script written line by line, then Pick Edges/Faces and the fillets.
+
+| Video | Example in the app |
+|---|---|
+| [SanPyCADM Project 1](https://youtu.be/waSNXv0eEF8) | not included |
+| [SanPyCADM Project 2](https://youtu.be/uJZ9jHFqYiQ) | not included |
+| [SanPyCADM Project 3](https://youtu.be/we4jgJjZFyU) | not included |
+| [SanPyCADM Project 4](https://youtu.be/ksuRJgnGJIk) | not included |
+| [SanPyCADM Project 7](https://youtu.be/s36XOSCyl9Y) | `SanPyCADM Project7` |
+| [SanPyCADM Project 8](https://youtu.be/fBgigryKavI) | `SanPyCADM Project8` |
+| [SanPyCADM Project 9](https://youtu.be/XPLlQ9QJJwA) | `SanPyCADM Project9` |
+
+`SanPyCADM Project5` and `SanPyCADM Project6` are in the Examples dropdown too, and don't have a video yet.
+
 ## How a model usually comes together
 
 1. **Sketch the profile.** Open **2D Sketch**, draw the outline with lines, arcs, tangent arcs and rounded corners, and click **Send to SanPyCAD**. The profile lands in your script as a variable such as `sec1`. To sketch on an existing part, use **Sketch on Face**.
@@ -95,6 +130,14 @@ The full ocad library by Sanjeev Prabhakar, including `fillet_by_offset`, `sugge
 
 ### Pick Edges / Faces
 Click edges and faces in the 3D view to get their indices, hover a chip to highlight it, lock a selection, and auto-pick seams, then apply fillets and chamfers straight from the selection.
+
+If an OCCT fillet fails, the error now names the edges that don't fit and roughly how large a radius each can take, and `fillet(shape, edges, r, on_fail="skip")` or `on_fail="shrink"` can round what works or retry smaller.
+
+### Offset fillet with live preview
+For corners where an OCCT fillet won't work, use **Offset fillet (live preview)** inside the Pick Edges/Faces panel. Pick the edge chain, set an offset for each of the two faces, and the 3D view shows the two offset lines (cyan and orange) with arrows pointing away from the edge, before anything is built. Flip a side with one click, let it detect an outer edge (cut) or inner corner (add) automatically, and remove self-crossing loops at corners. **Apply** writes the `fillet_by_offset(...)` code into the script.
+
+### Profile checks
+`linear_extrude()`, `prism()`, `rotate_extrude()` and `extrude_on_plane()` warn in the console when a 2D profile is open or crosses itself, the usual cause of spiky end caps. `clean_profile(sec)` trims the overshoot and closes it, and `check_profile(sec)` reports the problem on its own.
 
 ### Sketch, variables and GUI Functions
 - The **2D Sketch** panel and **Sketch on Face** send profiles into your script.
@@ -158,7 +201,8 @@ The packaged app keeps its settings and log (`SanPyCADM.log`) in `~/Library/Appl
 ## Documentation
 
 - **Find function** palette in the app (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>), and `brep_function_reference_guide.pdf` in this repo
-- **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)**: step-by-step modeling sessions
+- **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)**: step-by-step modeling sessions; the finished models are in the [Examples](#examples-and-video-tutorials) dropdown
+- Hover the **build123d ready** badge in the status bar to see the build123d and OpenCASCADE versions
 
 ## Credits
 
