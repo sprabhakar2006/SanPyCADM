@@ -79,7 +79,7 @@ SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unl
 
 ## Examples and video tutorials
 
-The **Examples** dropdown in the toolbar loads **13 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
+The **Examples** dropdown in the toolbar loads **14 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
 
 | Example | What it shows |
 |---|---|
@@ -96,6 +96,7 @@ The **Examples** dropdown in the toolbar loads **13 ready-made models**. Most co
 | `SanPyCADM Project7` | A flat plate from one sketched outline (`clean_profile()`) with sketched holes |
 | `SanPyCADM Project8` | Two stacked extrusions with a pattern of sketched holes |
 | `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
+| `SanPyCADM Project10` | A multi-body part: unions of extruded sketches, many sketched cut-outs and pockets, then `fillet()` and `chamfer()` on picked edge lists |
 
 Every example is a plain `.py` file in the `examples/` folder, and the sketches that go with it (where it has any) are stored next to it as `<name>.py.sketch.json` and load automatically.
 
@@ -105,7 +106,7 @@ The **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)** 
 |---|---|
 | [SanPyCADM Project 1](https://youtu.be/waSNXv0eEF8) | not included |
 | [SanPyCADM Project 2](https://youtu.be/uJZ9jHFqYiQ) | not included |
-| [SanPyCADM Project 3](https://youtu.be/we4jgJjZFyU) | `SanPyCADM Project3` |
+| [SanPyCADM Project 3](https://youtu.be/7K8bWrsFq4w) | `SanPyCADM Project3` |
 | [SanPyCADM Project 4](https://youtu.be/ksuRJgnGJIk) | `wavy_tray_fillet` |
 | [SanPyCADM Project 7](https://youtu.be/s36XOSCyl9Y) | `SanPyCADM Project7` |
 | [SanPyCADM Project 8](https://youtu.be/fBgigryKavI) | `SanPyCADM Project8` |

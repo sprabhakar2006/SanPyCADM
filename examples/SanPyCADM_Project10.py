@@ -1,0 +1,26 @@
+s1=swp(linear_extrude(sec1,10))
+s2=swp(linear_extrude(sec2,25))
+s3=[swp(linear_extrude(p,20)) for p in sec3]
+s4=union(s1,s2,*s3)
+s5=[swp(translate([0,0,-1],linear_extrude(p,30))) for p in sec4]
+s6=[swp(translate([0,0,-1],linear_extrude(p,30))) for p in sec5]
+s7=swp(translate([0,0,-1],linear_extrude(sec6,30)))
+s8=difference(s4,*s5,*s6,s7)
+s9=[swp(translate([0,0,10],linear_extrude(p,20))) for p in sec7]
+s10=swp(translate([0,0,10],linear_extrude(sec8,20)))
+s11=difference(s8,*s9,s10)
+e1 = [s11.edges()[i] for i in [25, 26, 28, 27, 24, 2]]  # <- probe list tool: e1
+s11 = fillet(s11, e1, 1)  # <- probe fillet tool: e1
+e2 = [s11.edges()[i] for i in [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 39]]  # <- probe list tool: e2
+s11 = fillet(s11, e2, 1)  # <- probe fillet tool: e2
+e3 = [s11.edges()[i] for i in [77, 69, 61, 67]]  # <- probe list tool: e3
+s11 = fillet(s11, e3, 1)  # <- probe fillet tool: e3
+e4 = [s11.edges()[i] for i in [113, 114, 112, 64]]  # <- probe list tool: e4
+s11 = fillet(s11, e4, 1)  # <- probe fillet tool: e4
+e5 = [s11.edges()[i] for i in [54, 56, 52, 13]]  # <- probe list tool: e5
+s11 = fillet(s11, e5, 1)  # <- probe fillet tool: e5
+e6 = [s11.edges()[i] for i in [46, 13]]  # <- probe list tool: e6
+s11 = fillet(s11, e6, 1)  # <- probe fillet tool: e6
+e7 = [s11.edges()[i] for i in [76, 77, 114, 115, 128, 129, 110, 109]]  # <- probe list tool: e7
+s11 = chamfer(s11, e7, 1)  # <- probe fillet tool: e7
+show(s11)
