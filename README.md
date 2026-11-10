@@ -11,9 +11,9 @@
 
 [Download](#download) · [First model](#your-first-model) · [Examples](#examples-and-video-tutorials) · [B-rep or mesh](#choose-per-shape-b-rep-or-mesh) · [Features](#features) · [SanPyCAD](https://github.com/sprabhakar2006/SanPyCAD) · [SanPyCAD Brep](https://github.com/sprabhakar2006/sanpycad-brep)
 
-<img src="docs/screenshot-tap.png" width="820" alt="SanPyCADM: a Python script on the left, a threaded tap rendered live on the right">
+<img src="docs/screenshot-project5.png" width="820" alt="SanPyCADM: the SanPyCADM Project5 script on the left, the finished filleted housing rendered live on the right">
 
-<sub>A threaded tap: script on the left, live 3D result on the right.</sub>
+<sub>SanPyCADM Project5: script on the left, live 3D result on the right.</sub>
 
 </div>
 
@@ -52,14 +52,14 @@ show(difference(a, b))
 
 Both shapes are exact B-rep solids, so you can now click **Pick Edges/Faces**, select the edges of the hole and fillet them.
 
-Now something that is hard in any CAD: a threaded tap. Choose **tap** from the **Examples** dropdown (one of 13, see [Examples](#examples-and-video-tutorials)), or write it yourself:
+Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 14, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
 
 ```python
-s1 = prism(c1, path)                           # the rod
-p1 = helix(7.5, 2.01, 20, 5)                   # thread path
-s2 = sweep_sec2path(sec1, p1, orientation=3)   # thread cutter
-r1 = difference(as_mesh(s1), as_mesh(s2))      # fast mesh boolean
-show(r1)
+s9  = difference(union([swp(s6), swp(s7)]), swp(s8), swp(c1))   # body with cut-outs
+s25 = union([s3, s24])                                           # join the parts
+e1  = [s25.edges()[i] for i in [29, 28]]                         # edges picked in the viewer
+s25 = fillet(s25, e1, 1)
+show(s25)
 ```
 
 While a script runs, the line being executed is highlighted in the editor, so you can see where a slow step is.
@@ -83,8 +83,6 @@ The **Examples** dropdown in the toolbar loads **14 ready-made models**. Most co
 
 | Example | What it shows |
 |---|---|
-| `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
-| `brep_tap` | The same tap as an exact B-rep |
 | `drill` | A twisted drill bit from `p_line3d(helix(...))` |
 | `cup` | A turned cup: `prism()`, `split()` and offset lines |
 | `hollow_cylinder_with_star` | `solid_line_vector()` extrusions, plane cuts and a star cut-out |
@@ -97,6 +95,8 @@ The **Examples** dropdown in the toolbar loads **14 ready-made models**. Most co
 | `SanPyCADM Project8` | Two stacked extrusions with a pattern of sketched holes |
 | `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
 | `SanPyCADM Project10` | A multi-body part: unions of extruded sketches, many sketched cut-outs and pockets, then `fillet()` and `chamfer()` on picked edge lists |
+| `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
+| `brep_tap` | The same tap as an exact B-rep |
 
 Every example is a plain `.py` file in the `examples/` folder, and the sketches that go with it (where it has any) are stored next to it as `<name>.py.sketch.json` and load automatically.
 
