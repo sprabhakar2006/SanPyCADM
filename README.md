@@ -52,7 +52,7 @@ show(difference(a, b))
 
 Both shapes are exact B-rep solids, so you can now click **Pick Edges/Faces**, select the edges of the hole and fillet them.
 
-Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 16, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
+Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 17, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
 
 ```python
 s9  = difference(union([swp(s6), swp(s7)]), swp(s8), swp(c1))   # body with cut-outs
@@ -79,7 +79,7 @@ SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unl
 
 ## Examples and video tutorials
 
-The **Examples** dropdown in the toolbar loads **16 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
+The **Examples** dropdown in the toolbar loads **17 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
 
 | Example | What it shows |
 |---|---|
@@ -97,6 +97,7 @@ The **Examples** dropdown in the toolbar loads **16 ready-made models**. Most co
 | `SanPyCADM Project10` | A multi-body part: unions of extruded sketches, many sketched cut-outs and pockets, then `fillet()` and `chamfer()` on picked edge lists |
 | `SanPyCADM Project11` | A bent, split and filleted bracket: `split()` with a plane, a `surface_line_vector` arm joined by `union`, large `fillet()` radii, then rows of sketched slots cut with `difference` |
 | `SanPyCADM Project12` | A pipe fitting: a cylinder joined to a swept branch and a flange with `union`, a hand-built blend at the junction (`o_3d` + `convert_3lines2fillet`), then bores cut with `cylinder` and `difference` |
+| `SanPyCADM Project13` | A woven lamp shade: 20 tapered strands swept along a `bezier()` curve with `swp()`, rotated around the axis and mirrored to cross, on a ring base. Pure script, no sketches; change `n` and `t` to restyle it |
 | `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
 | `brep_tap` | The same tap as an exact B-rep |
 
