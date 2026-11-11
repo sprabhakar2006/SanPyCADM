@@ -96,7 +96,7 @@ The **Examples** dropdown in the toolbar loads **16 ready-made models**. Most co
 | `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
 | `SanPyCADM Project10` | A multi-body part: unions of extruded sketches, many sketched cut-outs and pockets, then `fillet()` and `chamfer()` on picked edge lists |
 | `SanPyCADM Project11` | A bent, split and filleted bracket: `split()` with a plane, a `surface_line_vector` arm joined by `union`, large `fillet()` radii, then rows of sketched slots cut with `difference` |
-| `SanPyCADM Project12` | A pipe fitting: a cylinder joined to a swept branch and a flange with `union`, an offset fillet (`fillet_by_offset`) blending the junction, then bores cut with `cylinder` and `difference` |
+| `SanPyCADM Project12` | A pipe fitting: a cylinder joined to a swept branch and a flange with `union`, a hand-built blend at the junction (`o_3d` + `convert_3lines2fillet`), then bores cut with `cylinder` and `difference` |
 | `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
 | `brep_tap` | The same tap as an exact B-rep |
 
