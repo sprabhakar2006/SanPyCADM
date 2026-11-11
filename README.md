@@ -52,7 +52,7 @@ show(difference(a, b))
 
 Both shapes are exact B-rep solids, so you can now click **Pick Edges/Faces**, select the edges of the hole and fillet them.
 
-Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 14, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
+Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 15, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
 
 ```python
 s9  = difference(union([swp(s6), swp(s7)]), swp(s8), swp(c1))   # body with cut-outs
@@ -79,7 +79,7 @@ SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unl
 
 ## Examples and video tutorials
 
-The **Examples** dropdown in the toolbar loads **14 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
+The **Examples** dropdown in the toolbar loads **15 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
 
 | Example | What it shows |
 |---|---|
@@ -88,13 +88,14 @@ The **Examples** dropdown in the toolbar loads **14 ready-made models**. Most co
 | `hollow_cylinder_with_star` | `solid_line_vector()` extrusions, plane cuts and a star cut-out |
 | `split_demo` | Cutting a solid with `split(..., keep="top")` |
 | `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`); the model from the SanPyCADM Project 4 video |
-| `SanPyCADM Project3` | A plate with a pocket and a pattern of sketched holes, with `fillet()`, `chamfer()` and an offset fillet (`fillet_by_offset`) around a rim |
+| `SanPyCADM Project3` | A plate with a pocket and a pattern of sketched holes, with `fillet()` and `chamfer()` on picked edge lists |
 | `SanPyCADM Project5` | A multi-part housing: swept body, bolt holes, bosses, `fillet()` and offset fillets, built step by step |
 | `SanPyCADM Project6` | Sphere shells with extruded cut-outs from several 2D sketches |
 | `SanPyCADM Project7` | A flat plate from one sketched outline (`clean_profile()`) with sketched holes |
 | `SanPyCADM Project8` | Two stacked extrusions with a pattern of sketched holes |
 | `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
 | `SanPyCADM Project10` | A multi-body part: unions of extruded sketches, many sketched cut-outs and pockets, then `fillet()` and `chamfer()` on picked edge lists |
+| `SanPyCADM Project11` | A bent, split and filleted bracket: `split()` with a plane, a `surface_line_vector` arm joined by `union`, large `fillet()` radii, then rows of sketched slots cut with `difference` |
 | `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
 | `brep_tap` | The same tap as an exact B-rep |
 
