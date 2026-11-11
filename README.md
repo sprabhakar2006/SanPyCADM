@@ -11,9 +11,9 @@
 
 [Download](#download) · [First model](#your-first-model) · [Examples](#examples-and-video-tutorials) · [B-rep or mesh](#choose-per-shape-b-rep-or-mesh) · [Features](#features) · [SanPyCAD](https://github.com/sprabhakar2006/SanPyCAD) · [SanPyCAD Brep](https://github.com/sprabhakar2006/sanpycad-brep)
 
-<img src="docs/screenshot-project5.png" width="820" alt="SanPyCADM: the SanPyCADM Project5 script on the left, the finished filleted housing rendered live on the right">
+<img src="docs/screenshot-project6.png" width="820" alt="SanPyCADM: the SanPyCADM Project6 script on the left, the finished flanged ball-valve body rendered live on the right">
 
-<sub>SanPyCADM Project5: script on the left, live 3D result on the right.</sub>
+<sub>SanPyCADM Project6, a flanged ball-valve body: script on the left, live 3D result on the right.</sub>
 
 </div>
 
@@ -90,7 +90,7 @@ The **Examples** dropdown in the toolbar loads **16 ready-made models**. Most co
 | `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`); the model from the SanPyCADM Project 4 video |
 | `SanPyCADM Project3` | A plate with a pocket and a pattern of sketched holes, with `fillet()` and `chamfer()` on picked edge lists |
 | `SanPyCADM Project5` | A multi-part housing: swept body, bolt holes, bosses, `fillet()` and offset fillets, built step by step |
-| `SanPyCADM Project6` | A hollow sphere shell with extruded ports from several 2D sketches, joined with `union`/`difference`, rounded with offset fillets (`fillet_by_offset`) and finished with `chamfer()` |
+| `SanPyCADM Project6` | A flanged ball-valve body: a spherical shell with three bolted flanges built from sketched profiles, joined with `union`/`difference`, blended with offset fillets (`fillet_by_offset`) and finished with `chamfer()` |
 | `SanPyCADM Project7` | A flat plate from one sketched outline (`clean_profile()`) with sketched holes |
 | `SanPyCADM Project8` | Two stacked extrusions with a pattern of sketched holes |
 | `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
