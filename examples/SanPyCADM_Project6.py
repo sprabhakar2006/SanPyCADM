@@ -14,18 +14,24 @@ s12=difference(union([swp(s8),swp(s10)]),swp(s9),*[swp(p) for p in s11])
 s13=translate([-135,0,0],rot('y90',s7))
 s14=translate([135,0,0],rot('y-90',s7))
 s15=translate([0,0,135],rot('y180',s12))
-s16=difference(union([s13,s14,s15]),sphere(89))
+s16=difference(union([s13,s14,s15]),sphere(80))
 s17=difference(swp(s1),swp(s2))
 c1=o_solid([1,0,0],circle(42),500,-250)
 c2=o_solid([0,0,1],circle(42),500)
 s17=difference(s17,swp(c1),swp(c2))
 s18=union([s16,s17])
-e1 = [s18.edges()[i] for i in [173, 172, 10, 9, 68, 61]]  # <- probe list tool: e1
-s18 = fillet(s18, e1, 5)  # <- probe fillet tool: e1
-e2 = [s18.edges()[i] for i in [148, 145, 184, 181, 27, 24]]  # <- probe list tool: e2
-s18 = chamfer(s18, e2, 2)  # <- probe fillet tool: e2
-e3 = [s18.edges()[i] for i in [73, 71, 82, 83, 76, 79]]  # <- probe list tool: e3
-s18 = fillet(s18, e3, 5)  # <- probe fillet tool: e3
-e4 = [s18.edges()[i] for i in [100, 101, 233, 232, 238, 239]]  # <- probe list tool: e4
+e1 = [s18.edges()[i] for i in [68, 61]]  # <- probe list tool: e1
+f_e1 = translate([0,0,.01],fillet_by_offset(e1, s18, s18, 5, -5, auto_dir=0, as_solid=1))  # <- probe offset fillet tool: e1
+f_e1a=rot('y90',f_e1)
+f_e1b=rot('y-90',f_e1)
+s18 = union([s18, swp(f_e1),swp(f_e1a),swp(f_e1b)])  # <- probe offset fillet union: e1
+e2 = [s18.edges()[i] for i in [241, 242, 240]]  # <- probe list tool: e2
+f_e2 = translate([0,0,-0.02],fillet_by_offset(e2, s18, s18, 5, -5, auto_dir=0, as_solid=1))  # <- probe offset fillet tool: e2
+f_e2a=rot('y90',f_e2)
+f_e2b=rot('y-90',f_e2)
+s18 = union([s18, swp(f_e2),swp(f_e2a),swp(f_e2b)])  # <- probe offset fillet union: e2
+e3 = [s18.edges()[i] for i in [129, 111, 4]]  # <- probe list tool: e3
+s18 = chamfer(s18, e3, 2)  # <- probe fillet tool: e3
+e4 = [s18.edges()[i] for i in [39, 113, 109]]  # <- probe list tool: e4
 s18 = chamfer(s18, e4, 5)  # <- probe fillet tool: e4
 show(s18)

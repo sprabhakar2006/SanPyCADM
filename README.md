@@ -90,7 +90,7 @@ The **Examples** dropdown in the toolbar loads **16 ready-made models**. Most co
 | `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`); the model from the SanPyCADM Project 4 video |
 | `SanPyCADM Project3` | A plate with a pocket and a pattern of sketched holes, with `fillet()` and `chamfer()` on picked edge lists |
 | `SanPyCADM Project5` | A multi-part housing: swept body, bolt holes, bosses, `fillet()` and offset fillets, built step by step |
-| `SanPyCADM Project6` | Sphere shells with extruded cut-outs from several 2D sketches |
+| `SanPyCADM Project6` | A hollow sphere shell with extruded ports from several 2D sketches, joined with `union`/`difference`, rounded with offset fillets (`fillet_by_offset`) and finished with `chamfer()` |
 | `SanPyCADM Project7` | A flat plate from one sketched outline (`clean_profile()`) with sketched holes |
 | `SanPyCADM Project8` | Two stacked extrusions with a pattern of sketched holes |
 | `SanPyCADM Project9` | A swept, filleted multi-body part: `sweep_sec2path`, `solid_from_2surfaces`, `split`, `fillet` and boolean cuts |
