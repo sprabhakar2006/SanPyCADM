@@ -190,6 +190,21 @@ class Api:
     ever exported as a one-way STL/OBJ/etc snapshot.
     """
 
+    def open_url(self, url):
+        """Open a LOCAL http://127.0.0.1 URL in the user's default browser.
+        Used by the toolbar's GD&T button: GD&T Drafter's editor is a
+        browser page with its own PDF/DXF/SVG download buttons, which
+        need a real browser (the Blob + <a download> trick doesn't work
+        in this native window -- see export_file() above). Anything that
+        isn't a loopback URL is refused."""
+        try:
+            if not (isinstance(url, str) and url.startswith("http://127.0.0.1:")):
+                return {"error": "refusing to open a non-local URL"}
+            webbrowser.open(url)
+            return {"ok": True}
+        except Exception as exc:
+            return {"error": str(exc)}
+
     def export_file(self, code, kind):
         try:
             if kind in ("svg", "drawing"):

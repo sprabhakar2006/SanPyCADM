@@ -46,6 +46,10 @@ hiddenimports += [
     "socketserver", "struct", "subprocess", "tempfile", "threading", "time",
     "traceback", "urllib.request", "warnings", "webbrowser",
     "xml.etree.ElementTree", "faulthandler",
+    # gdt_drafter/ (GD&T Drafter) ships as plain .py data and is imported
+    # at run time (gdt_bridge.py), so what it needs must be bundled:
+    "dataclasses", "hashlib", "zlib", "contextlib", "copy", "itertools",
+    "uuid", "xml.sax.saxutils", "urllib.parse", "ezdxf", "ezdxf.enums",
 ]
 
 datas = collect_data_files("sympy")
@@ -80,6 +84,8 @@ a = Analysis(
 
 a.datas += Tree(os.path.join(PROJECT_ROOT, "backend"), prefix="backend",
                 excludes=["__pycache__", "_protected_src", "*.pyc"])
+a.datas += Tree(os.path.join(PROJECT_ROOT, "gdt_drafter"), prefix="gdt_drafter",
+                excludes=["__pycache__", "*.pyc"])
 a.datas += Tree(os.path.join(PROJECT_ROOT, "frontend"), prefix="frontend",
                 excludes=["__pycache__", "*.pyc"])
 a.datas += Tree(os.path.join(PROJECT_ROOT, "examples"), prefix="examples",

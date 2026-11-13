@@ -1105,8 +1105,9 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
     <span class="tb-sep"></span>
     <div class="tb-group g-model">
       <button id="btn-sketch-face" title="Click a face on the model to sketch a new 2D profile aligned to it -- opens the 2D Sketch panel looking straight at that face, anchored to the model's true (0,0,0) origin."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 16l5-5 2 2-5 5H8z"/></svg><span class="lbl">Sketch on Face</span></button>
-      <button id="btn-drawing" title="Open an interactive engineering drawing (FRONT/TOP/RIGHT/ISO views, hidden edges dashed) -- click points/circles/edges to add linear, radius/diameter, angle, or center-distance dimensions, then download the dimensioned sheet as SVG. For a quick one-click flat SVG with no dimensioning, use Export &#8594; SVG instead."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16z"/><path d="M4 12h4M12 20v-4"/></svg><span class="lbl">Drawing</span></button>
-      <button id="btn-capture-view" title="Orbit the model to whatever angle you want here in the 3D view, then click this to add that exact orientation as a new named view on the Drawing tab's sheet -- alongside FRONT/TOP/RIGHT/ISO, not replacing them. Open the Drawing tab (or click Views there) to see/remove captured views."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lbl">Add View</span></button>
+      <button id="btn-drawing" hidden style="display:none" title="Open an interactive engineering drawing (FRONT/TOP/RIGHT/ISO views, hidden edges dashed) -- click points/circles/edges to add linear, radius/diameter, angle, or center-distance dimensions, then download the dimensioned sheet as SVG. For a quick one-click flat SVG with no dimensioning, use Export &#8594; SVG instead."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16z"/><path d="M4 12h4M12 20v-4"/></svg><span class="lbl">Drawing</span></button>
+      <button id="btn-gdt" title="GD&amp;T Drafter: send the shown shape(s) to the bundled GD&amp;T Drafter, a full drawing editor with projected views, sections, dimensions, datums and geometric tolerances (ISO or ASME), exported as PDF / DXF / SVG. Opens in your browser."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 15h10M14 9h3"/></svg><span class="lbl">GD&amp;T</span></button>
+      <button id="btn-capture-view" hidden style="display:none" title="Orbit the model to whatever angle you want here in the 3D view, then click this to add that exact orientation as a new named view on the Drawing tab's sheet -- alongside FRONT/TOP/RIGHT/ISO, not replacing them. Open the Drawing tab (or click Views there) to see/remove captured views."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lbl">Add View</span></button>
     </div>
     <div class="tb-group g-font">
       <div id="font-size-control" title="Editor font size -- Ctrl/Cmd+= to increase, Ctrl/Cmd+- to decrease, Ctrl/Cmd+0 (or double-click the size) to reset, same shortcuts as a browser/VS Code zoom">
@@ -8556,6 +8557,38 @@ document.getElementById('display-settings-reset').addEventListener('click', () =
 // come along for free, no separate "bake in the dimensions" step
 // needed server-side.
 const btnDrawing = document.getElementById('btn-drawing');
+
+// GD&T Drafter hand-off: the backend exports the shown shape(s) to STEP,
+// opens them in the bundled GD&T Drafter and returns its editor URL.
+const btnGdt = document.getElementById('btn-gdt');
+if (btnGdt) {
+  btnGdt.addEventListener('click', async () => {
+    btnGdt.disabled = true;
+    logLine('GD&T Drafter: exporting the model and opening it...', 'info');
+    try {
+      const resp = await fetch('/gdt/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cm.getValue(), open_browser: !!window.pywebview })
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) {
+        logLine('GD&T Drafter failed: ' + (data.error || resp.statusText), 'err');
+        return;
+      }
+      if (window.pywebview) {
+        if (!data.opened) logLine('GD&T Drafter is ready: open ' + data.url + ' in your browser.', 'info');
+      } else {
+        window.open(data.url, '_blank');
+      }
+      logLine('GD&T Drafter opened in your browser (' + (data.bodies || 1) + ' shape(s)).', 'info');
+    } catch (err) {
+      logLine('GD&T Drafter failed: ' + err, 'err');
+    } finally {
+      btnGdt.disabled = false;
+    }
+  });
+}
 const drawingPane = document.getElementById('drawing-pane');
 const drawingSvg = document.getElementById('drawing-svg');
 const drawingStatusEl = document.getElementById('drawing-status');

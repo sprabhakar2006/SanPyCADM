@@ -123,7 +123,7 @@ The **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)** 
 2. **Make it 3D.** `linear_extrude()`, `prism()`, sweeps along a path or a `helix()`, lofts between sections.
 3. **Combine.** `union()`, `difference()`, `intersection()`, `hull()`, `split()`.
 4. **Refine.** Click **Pick Edges/Faces** to get edge and face indices, apply `fillet()` and `chamfer()`, or auto-pick seams.
-5. **Check and export.** Measure, add dimensions, open **Drawing** for front, top and side views, then export STEP, STL, OBJ, SVG or DXF.
+5. **Check and export.** Measure, add dimensions, open **GD&T** for a full drawing with front, top and side views, then export STEP, STL, OBJ, SVG or DXF.
 
 ## Features
 
@@ -154,7 +154,10 @@ For corners where an OCCT fillet won't work, use **Offset fillet (live preview)*
 Variables persist between renders, so a slow step can run once, be commented out, and everything after it iterated on for free. <kbd>Tab</kbd> completes function names and <kbd>Shift</kbd>+<kbd>Tab</kbd> shows a signature and docs.
 
 ### Measure, dimension, draw
-Measure vertices and edges, place labelled dimensions, and build **Drawing** sheets with one, three or six views and section cuts, exported as SVG or PDF.
+Measure vertices and edges and place labelled dimensions in the 3D view. For engineering drawings (views, sections, dimensions, datums and geometric tolerances) use **GD&T** (below).
+
+### GD&T Drafter: full drawings with datums and tolerances
+Click **GD&T** in the toolbar to send the shapes you `show()` to the bundled **GD&T Drafter**. It opens in your browser with front, top, side and isometric views (true hidden lines), section views with hatching, and tools to place dimensions, datums, geometric tolerance frames and notes, to ISO GPS or ASME Y14.5. Export the finished sheet as PDF, DXF or SVG, or save the drawing together with its STEP model as a `.gdt.json` project. It runs locally; nothing is uploaded. The drafter itself lives in the `gdt_drafter/` folder and also runs on its own.
 
 ### Get models in and out
 Export STL, OBJ, STEP, SVG and DXF. Scripts are plain `.py` files, openable in any editor.
