@@ -8577,7 +8577,7 @@ if (btnGdt) {
         return;
       }
       if (window.pywebview) {
-        if (!data.opened) logLine('GD&T Drafter is ready: open ' + data.url + ' in your browser.', 'info');
+        logLine('GD&T Drafter is ready at ' + data.url + (data.opened ? '' : ' -- open it in your browser.'), 'info');
       } else {
         window.open(data.url, '_blank');
       }

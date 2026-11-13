@@ -52,6 +52,7 @@ def ensure_server():
     return server, _STATE["port"]
 
 
+
 def open_step(step_path, name="model.step", standard="ISO"):
     """Open a STEP file as a new drawing; returns the editor URL."""
     server, port = ensure_server()
