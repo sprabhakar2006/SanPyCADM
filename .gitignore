@@ -15,3 +15,6 @@ my_scripts/
 Fix SanPyCADM.command
 OLD-SanPyCADM-launcher.app/
 timing.log
+
+# local Windows test patch
+SanPyCADM-win-update.zip

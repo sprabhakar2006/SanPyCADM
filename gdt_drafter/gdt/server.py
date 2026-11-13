@@ -2,6 +2,8 @@
 import base64
 import json
 import os
+import socket
+import sys
 import threading
 import traceback
 import uuid
@@ -17,9 +19,32 @@ from .export_pdf import to_pdf
 from .export_svg import to_svg
 from .session import Session
 
+def _find_dir(name, marker=None):
+    """The folder that holds web/ or samples/. Normally next to the gdt package;
+    in a frozen app (PyInstaller) look at a few more places as well."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    cands = [os.path.join(os.path.dirname(here), name), os.path.join(here, name)]
+    mp = getattr(sys, "_MEIPASS", None)
+    if mp:
+        cands += [os.path.join(mp, "gdt_drafter", name), os.path.join(mp, name)]
+    cands.append(os.path.join(os.getcwd(), name))
+    for c in cands:
+        c = os.path.abspath(c)
+        if os.path.isdir(c) and (marker is None or os.path.isfile(os.path.join(c, marker))):
+            return c
+    return os.path.abspath(cands[0])
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WEB = os.path.join(ROOT, "web")
-SAMPLES = os.path.join(ROOT, "samples")
+WEB = _find_dir("web", "index.html")
+SAMPLES = _find_dir("samples")
+
+
+def _inside(path, base):
+    """True if `path` is `base` or lies below it (case-insensitive on Windows)."""
+    a = os.path.normcase(os.path.abspath(path))
+    b = os.path.normcase(os.path.abspath(base))
+    return a == b or a.startswith(b.rstrip("\\/") + os.sep)
 LOCK = threading.Lock()
 SESSIONS = {}
 MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
@@ -226,8 +251,12 @@ class Handler(BaseHTTPRequestHandler):
                                "step_b64": data, "doc": s.doc}).encode("utf-8")
             return self._send(200, body, headers={"Content-Disposition": 'attachment; filename="%s"' % name})
         fp = os.path.normpath(os.path.join(WEB, path.lstrip("/")))
-        if not fp.startswith(WEB) or not os.path.isfile(fp):
-            return self._send(404, {"error": "Not found"})
+        if not _inside(fp, WEB) or not os.path.isfile(fp):
+            # say WHERE it looked: a missing web folder in an install is
+            # otherwise indistinguishable from a bad URL
+            return self._send(404, {"error": "Not found", "path": path, "web_dir": WEB,
+                                    "web_dir_exists": os.path.isdir(WEB),
+                                    "index_exists": os.path.isfile(os.path.join(WEB, "index.html"))})
         with open(fp, "rb") as f:
             data = f.read()
         if path == "/index.html":       # stamp the version so a browser never mixes old and new files
@@ -334,6 +363,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": str(e) or e.__class__.__name__})
 
 
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+    # Windows lets a second server bind a port that is already in use when
+    # SO_REUSEADDR is set (the browser then talks to the OLD one). Don't.
+    allow_reuse_address = os.name != "nt"
+
+    def server_bind(self):
+        if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def serve(port=8765, host="127.0.0.1"):
-    httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd = _Server((host, port), Handler)
     return httpd
