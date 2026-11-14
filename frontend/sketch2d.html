@@ -1574,6 +1574,67 @@
     }
     return results;
   }
+  // Fillet arcs that findAllArcs() can't see: ones that touch the closed
+  // shape's seam (start point), or were made with a different "segments"
+  // setting than the current one. Finds maximal runs of consecutive points
+  // lying on one circle (wrapping round a closed chain), each at least 5
+  // points with small steps (so a 5-vertex polygon is not mistaken for an
+  // arc). Returns {center, radius, idxs} for runs whose circle was not
+  // already found by findAllArcs.
+  function findLooseArcs(ent, known) {
+    if (ent.type !== 'chain' || ent.points.length < 7) return [];
+    const pts = ent.points; let n = pts.length;
+    const closed = !!ent.closed;
+    // a closed chain may repeat its first point at the end
+    if (closed && Math.hypot(pts[0][0] - pts[n-1][0], pts[0][1] - pts[n-1][1]) < 1e-9) n -= 1;
+    const P = (i) => pts[((i % n) + n) % n];
+    const out = [];
+    const same = (a, b) => Math.hypot(a.center[0] - b.center[0], a.center[1] - b.center[1]) < Math.max(1e-3, b.radius * 1e-3)
+                          && Math.abs(a.radius - b.radius) < Math.max(1e-3, b.radius * 1e-3);
+    const total = closed ? n : n - 2;
+    const used = new Set();
+    for (let i = 0; i < total; i++) {
+      if (used.has(i)) continue;
+      const a = P(i), b = P(i + 1), c = P(i + 2);
+      if (!closed && i + 2 > n - 1) break;
+      const c0 = circumcircle(a, b, c);
+      if (!c0 || !isFinite(c0.radius) || c0.radius > 1e5 || c0.radius < 1e-6) continue;
+      const tol = Math.max(1e-4, c0.radius * 1e-4);
+      const on = (p) => Math.abs(Math.hypot(p[0] - c0.center[0], p[1] - c0.center[1]) - c0.radius) < tol;
+      let j = i + 2;
+      const maxJ = closed ? i + n - 1 : n - 1;
+      while (j + 1 <= maxJ && on(P(j + 1))) j++;
+      const idxs = [];
+      let ok = true;
+      for (let k = i; k <= j; k++) {
+        idxs.push(((k % n) + n) % n);
+        if (k > i && Math.hypot(P(k)[0] - P(k-1)[0], P(k)[1] - P(k-1)[1]) > c0.radius * 0.6) ok = false;
+      }
+      for (let k = i; k <= j; k++) used.add(((k % n) + n) % n);
+      if (!ok || idxs.length < 5) continue;
+      // a genuine fillet sweeps steadily round its center in one direction
+      // through a real angle, at a size that matters on this shape; offsetting
+      // can leave tiny kinks / cusp loops that fit a circle but are not fillets
+      let sgn = 0, span = 0, mono = true;
+      for (let k = 1; k < idxs.length; k++) {
+        const p0 = pts[idxs[k-1]], p1 = pts[idxs[k]];
+        let da = Math.atan2(p1[1] - c0.center[1], p1[0] - c0.center[0]) - Math.atan2(p0[1] - c0.center[1], p0[0] - c0.center[0]);
+        while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+        if (Math.abs(da) < 1e-9) { mono = false; break; }
+        const sg = da > 0 ? 1 : -1;
+        if (sgn && sg !== sgn) { mono = false; break; }
+        sgn = sg; span += Math.abs(da);
+      }
+      let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+      for (const p of pts) { xmin = Math.min(xmin, p[0]); xmax = Math.max(xmax, p[0]); ymin = Math.min(ymin, p[1]); ymax = Math.max(ymax, p[1]); }
+      const diag = Math.hypot(xmax - xmin, ymax - ymin);
+      if (!mono || span < 0.2 || c0.radius < diag * 0.004) continue;
+      const info = { center: c0.center, radius: c0.radius, idxs };
+      if ((known || []).some(k => same(k, info)) || out.some(k => same(k, info))) continue;
+      out.push(info);
+    }
+    return out;
+  }
   // Fallback for a chain that is, itself, entirely one arc (drawn directly
   // with Arc(2pt+radius), Two-circle tangent arc, etc.) rather than a
   // fillet embedded inside a bigger shape with straight neighbors on each
@@ -1622,6 +1683,15 @@
         if (d < bestD) { bestD = d; best = arcInfo.center; }
       }
     }
+    if (!best) {
+      for (const arcInfo of findLooseArcs(ent, findAllArcs(ent))) {
+        for (const i of arcInfo.idxs) {
+          const p = ent.points[i];
+          const d = Math.hypot(p[0] - world[0], p[1] - world[1]);
+          if (d < bestD) { bestD = d; best = arcInfo.center; }
+        }
+      }
+    }
     if (best) return best;
     const whole = wholeChainCircleFit(ent);
     return whole ? whole.center : null;
@@ -1637,6 +1707,15 @@
         const p = ent.points[i];
         const d = Math.hypot(p[0] - world[0], p[1] - world[1]);
         if (d < bestD) { bestD = d; best = arcInfo; }
+      }
+    }
+    if (!best) {
+      for (const arcInfo of findLooseArcs(ent, findAllArcs(ent))) {
+        for (const i of arcInfo.idxs) {
+          const p = ent.points[i];
+          const d = Math.hypot(p[0] - world[0], p[1] - world[1]);
+          if (d < bestD) { bestD = d; best = arcInfo; }
+        }
       }
     }
     if (best) return { center: best.center, radius: best.radius };
@@ -1867,7 +1946,8 @@
           // rounded corner (fillet arc) on this chain -- so a fillet's
           // center is visible and, like a circle's, usable as a snap point
           // and as the "center" end of Center-to-edge/Center-to-center.
-          for (const arcInfo of findAllArcs(ent)) drawCenterMark(arcInfo.center, isSel ? getCss('--select') : getCss('--muted'));
+          const _known = findAllArcs(ent);
+          for (const arcInfo of _known.concat(findLooseArcs(ent, _known))) drawCenterMark(arcInfo.center, isSel ? getCss('--select') : getCss('--muted'));
         }
       }
     }
@@ -2522,7 +2602,7 @@
 
   // ---- tool logic ----
   const TOOL_HINTS = {
-    line: 'Click to place points. Or type an exact length/angle below. <b>Enter</b> to finish open, <b>X</b> to close.',
+    line: 'Click to place points. Or type exact X/Y coordinates, or a length and angle, below. <b>Enter</b> to finish open, <b>X</b> to close.',
     arc2p: 'Click 2 points (start, then end) for a standalone arc -- or, with a line in progress, just click the end point to continue it as an arc. Then set a radius and direction below.',
     arc3p: 'Click 2 more points (through-point, then end point) to fit an arc.',
     arccp: 'Click the center, then set a radius and a start/end angle (in degrees) below -- draws the arc sweeping from the start angle to the end angle.',
@@ -2842,23 +2922,69 @@
     if (btn) btn.click();
   });
 
-  // Line: numeric length/angle entry, always visible near toolbar bottom-left of canvas
+  // Line: numeric entry, always visible near toolbar bottom-left of canvas.
+  // Fields: X / Y (a point's coordinates), Length, Angle. What "Add point" does:
+  //   * first point (nothing placed yet): X and Y place the START point there
+  //     (a missing one counts as 0); if Length is also filled, the first
+  //     segment is added from that start point at the given Angle.
+  //   * after that, X and Y are MOVES from the last point (turtle style):
+  //     X and Y both filled           -> go X across and Y up from the last point.
+  //   * X or Y, plus an Angle         -> follow that Angle from the last point
+  //                                      until it has moved X across (or Y up).
+  //   * only X or only Y              -> a horizontal / vertical move of that size.
+  //   * Length (+ Angle)              -> as before: that far, 0 deg = +X, CCW.
   function refreshLineEntry() {
     if (tool !== 'line') return;
     showEntry(`
+      <div class="row"><label>X <input type="text" inputmode="decimal" id="ln-x" step="any" placeholder="x"></label>
+        <label>Y <input type="text" inputmode="decimal" id="ln-y" step="any" placeholder="y"></label></div>
       <div class="row"><label>Length <input type="text" inputmode="decimal" id="ln-len" step="any" placeholder="e.g. 20"></label></div>
       <div class="row"><label>Angle&deg; <input type="text" inputmode="decimal" id="ln-ang" step="any" placeholder="0=+X, CCW"></label></div>
+      <div class="row" style="color:var(--muted);font-size:11px;max-width:210px;">First point: X/Y = where the line starts. After that X/Y are moves from the last point: X+Y = move that far across and up; X or Y + Angle = run along the angle until it has moved that much; Length + Angle = that far.</div>
       <div class="row"><button id="ln-add" class="primary-action">Add point</button></div>
     `, null);
     document.getElementById('ln-add').onclick = () => {
+      const X = parseNum(document.getElementById('ln-x').value);
+      const Y = parseNum(document.getElementById('ln-y').value);
       const len = parseNum(document.getElementById('ln-len').value);
-      const ang = parseNum(document.getElementById('ln-ang').value) || 0;
-      if (!isFinite(len)) return;
-      const last = chain.points.length ? chain.points[chain.points.length - 1] : [0, 0];
+      const angRaw = parseNum(document.getElementById('ln-ang').value);
+      const ang = isFinite(angRaw) ? angRaw : 0;
+      const hasX = isFinite(X), hasY = isFinite(Y), hasLen = isFinite(len), hasAng = isFinite(angRaw);
+      if (!hasX && !hasY && !hasLen) { setStatus('Enter X and/or Y, or a length (and angle).', false); return; }
       const rad = ang * Math.PI / 180;
-      const p = [last[0] + len * Math.cos(rad), last[1] + len * Math.sin(rad)];
-      chain.points.push(p);
-      pushHistory(); refreshSidebar(); draw(); refreshLineEntry();
+      let added = false;
+      if (!chain.points.length && (hasX || hasY)) {
+        // place the start point at (X, Y); a Length then adds the first segment from it
+        chain.points.push([hasX ? X : 0, hasY ? Y : 0]);
+        added = true;
+        if (hasLen) {
+          const st = chain.points[0];
+          chain.points.push([st[0] + len * Math.cos(rad), st[1] + len * Math.sin(rad)]);
+        }
+      } else {
+        const last = chain.points.length ? chain.points[chain.points.length - 1] : [0, 0];
+        let p = null;
+        if (hasLen) {
+          p = [last[0] + len * Math.cos(rad), last[1] + len * Math.sin(rad)];
+        } else if (hasX && hasY) {
+          p = [last[0] + X, last[1] + Y];               // turtle move: X across, Y up
+        } else if ((hasX || hasY) && hasAng) {
+          const c = Math.cos(rad), sn = Math.sin(rad);
+          const along = hasX ? c : sn;                  // component along the fixed axis
+          if (Math.abs(along) < 1e-9) { setStatus('That angle never moves in ' + (hasX ? 'X' : 'Y') + ' (it runs parallel to it).', false); return; }
+          const t = (hasX ? X : Y) / along;             // distance along the angle for that much movement
+          if (t < 0) { setStatus('At that angle the line moves the other way in ' + (hasX ? 'X' : 'Y') + '. Check the sign or the angle.', false); return; }
+          p = [last[0] + t * c, last[1] + t * sn];
+        } else if (hasX) {
+          p = [last[0] + X, last[1]];
+        } else if (hasY) {
+          p = [last[0], last[1] + Y];
+        }
+        if (!p) { setStatus('Enter X and Y, or a length and angle.', false); return; }
+        chain.points.push(p);
+        added = true;
+      }
+      if (added) { pushHistory(); refreshSidebar(); draw(); refreshLineEntry(); }
     };
   }
 
