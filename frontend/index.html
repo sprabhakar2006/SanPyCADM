@@ -1231,6 +1231,28 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
             <input id="probe-fillet-radius" class="probe-field" type="text" placeholder="e.g. 2" title="Fillet radius to apply to the currently captured list -- see the Max fillet radius readout above for what's actually achievable" autocapitalize="off" autocorrect="off" spellcheck="false">
             <button id="probe-fillet-apply" class="probe-field-btn primary" title="Writes VAR = fillet(VAR, LIST, RADIUS) into the script (right after the captured list itself) and Renders immediately -- re-clicking with a different radius updates that same line rather than adding another">Apply fillet</button>
           </div>
+          <details id="vfillet-box" class="probe-hint" style="margin-top:6px">
+            <summary title="Rounds the picked edges with the largest radius that fits on each part of the chain, instead of failing on the tightest edge -- writes fillet_variable(...) for you">Variable fillet (auto radius)</summary>
+            <div class="probe-hint">Pick the edges above (Edges mode, one shape), type the radius you <b>want</b>, and press Apply. Where that radius does not fit, the tool finds the largest one that does, and fillets everything in one go. The console prints the radius used for each stretch.</div>
+            <div class="probe-field-row">
+              <span class="probe-field-label" style="width:auto">Radius</span>
+              <input id="vfillet-r" class="probe-field" type="text" value="0.5" title="The radius you would like -- smaller ones are used automatically where this one does not fit" autocapitalize="off" autocorrect="off" spellcheck="false">
+            </div>
+            <div class="probe-field-row">
+              <span class="probe-field-label" style="width:auto" title="Edges that only take less than this share of the radius are left sharp instead of getting a tiny fillet">Skip below</span>
+              <input id="vfillet-keep" class="probe-field" type="text" value="10" title="Percent of the wanted radius. Edges that only take less than this are left sharp (a tiny fillet usually breaks the result)" autocapitalize="off" autocorrect="off" spellcheck="false">
+              <span class="probe-hint" style="margin:0 0 0 4px">% of radius</span>
+            </div>
+            <div class="probe-field-row">
+              <span class="probe-field-label" style="width:auto" title="Search time budget">Time limit</span>
+              <input id="vfillet-time" class="probe-field" type="text" value="60" title="Seconds the radius search may take. Longer chains may need more" autocapitalize="off" autocorrect="off" spellcheck="false">
+              <span class="probe-hint" style="margin:0 0 0 4px">seconds</span>
+            </div>
+            <div id="vfillet-status" class="probe-hint"></div>
+            <div class="probe-list-actions">
+              <button id="vfillet-apply" class="primary" title="Writes VAR = fillet_variable(VAR, LIST, RADIUS) into the script and renders -- re-clicking updates the same line">Apply variable fillet</button>
+            </div>
+          </details>
           <details id="ofillet-box" class="probe-hint" style="margin-top:6px">
             <summary title="Fillet between the two faces of the picked edge chain by OFFSET lines instead of OCCT's fillet -- shows where the two offset lines land (with direction arrows) before anything is built">Offset fillet (live preview)</summary>
             <div class="probe-hint">Pick the edge chain above (Edges mode), set the two offsets, and check the preview: <b style="color:#22d3ee">cyan</b> = line on face A, <b style="color:#ffa500">orange</b> = line on face B, white = the edge. Arrows point from the edge to each offset line. If a line is on the wrong side, press its flip button.</div>
@@ -4286,15 +4308,44 @@ function pickVertex(ndc) {
 }
 
 function pickEdge(ndc) {
-  raycaster.setFromCamera(ndc, camera);
-  raycaster.params.Line.threshold = Math.max(getModelMaxDim() * 0.01, 1e-6);
-  const lines = meshGroup.children.filter((c) => c.userData && c.userData.isEdgeOverlay);
-  const hits = raycaster.intersectObjects(lines, false);
-  if (!hits.length || hits[0].index == null) return null;
-  const hit = hits[0];
-  const posAttr = hit.object.geometry.attributes.position;
-  const a = new THREE.Vector3().fromBufferAttribute(posAttr, hit.index).applyMatrix4(hit.object.matrixWorld);
-  const b = new THREE.Vector3().fromBufferAttribute(posAttr, hit.index + 1).applyMatrix4(hit.object.matrixWorld);
+  // Screen-space picking: the segment whose projected line is closest to
+  // the cursor (within PICK_PX pixels) wins, so zooming in makes it
+  // precise -- the old world-space tolerance grew with the model, not
+  // with the zoom, and grabbed neighbouring edges.
+  const PICK_PX = 7;
+  const lines = meshGroup.children.filter((c) => c.userData && c.userData.isEdgeOverlay && c.visible !== false);
+  const rect = renderer.domElement.getBoundingClientRect();
+  const cx = (ndc.x + 1) / 2 * rect.width, cy = (1 - ndc.y) / 2 * rect.height;
+  camera.updateMatrixWorld();
+  const pa = new THREE.Vector3(), pb = new THREE.Vector3();
+  const toScr = (v, out) => { out.copy(v).project(camera); return { x: (out.x + 1) / 2 * rect.width, y: (1 - out.y) / 2 * rect.height, z: out.z }; };
+  let best = null, bestD = PICK_PX, bestZ = 0;
+  for (const obj of lines) {
+    const posAttr = obj.geometry.attributes.position;
+    const idx = obj.geometry.index;
+    const n = idx ? idx.count : posAttr.count;
+    obj.updateMatrixWorld();
+    for (let i = 0; i + 1 < n; i += 2) {
+      const ia = idx ? idx.getX(i) : i, ib = idx ? idx.getX(i + 1) : i + 1;
+      const A = new THREE.Vector3().fromBufferAttribute(posAttr, ia).applyMatrix4(obj.matrixWorld);
+      const B = new THREE.Vector3().fromBufferAttribute(posAttr, ib).applyMatrix4(obj.matrixWorld);
+      const sa = toScr(A, pa), sb = toScr(B, pb);
+      if (sa.z > 1 && sb.z > 1) continue; // behind camera
+      const dx = sb.x - sa.x, dy = sb.y - sa.y;
+      const L2 = dx * dx + dy * dy;
+      let t = L2 > 1e-12 ? ((cx - sa.x) * dx + (cy - sa.y) * dy) / L2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const d = Math.hypot(cx - (sa.x + t * dx), cy - (sa.y + t * dy));
+      const z = sa.z + t * (sb.z - sa.z);
+      // closer on screen wins; near-ties go to the one nearer the camera
+      if (d < bestD - 1 || (d <= bestD + 1 && best && z < bestZ && d < PICK_PX)) {
+        if (!best || d < bestD - 1 || z < bestZ) { best = { obj, A, B }; bestD = Math.min(d, bestD); bestZ = z; }
+      } else if (!best && d < bestD) { best = { obj, A, B }; bestD = d; bestZ = z; }
+    }
+  }
+  if (!best) return null;
+  const hit = { object: best.obj };
+  const a = best.A, b = best.B;
   // sourceVar: which script variable's shape this edge overlay came
   // from (see showMeshes()), or null if not determinable -- existing
   // callers (Measure mode) only ever destructure .a/.b, so adding this
@@ -5037,6 +5088,7 @@ function commentMarkedLine(marker) {
 
 function listLineMarker(name) { return `# <- probe list tool: ${name}`; }
 function filletLineMarker(name) { return `# <- probe fillet tool: ${name}`; }
+function vfilletLineMarker(name) { return `# <- probe variable fillet: ${name}`; }
 
 // If `name`'s fillet-apply line is currently live in the script,
 // comments out BOTH its list line and its fillet line and re-renders --
@@ -5054,10 +5106,11 @@ function filletLineMarker(name) { return `# <- probe fillet tool: ${name}`; }
 // happened (callers should ask the user to repeat their click/Add
 // rather than trying to chain it onto a mesh that just got rebuilt).
 async function revertListFilletIfLive(name) {
-  const _ofLive = markedLineIsLive(`# <- probe offset fillet tool: ${name}`);
+  const _ofLive = markedLineIsLive(`# <- probe offset fillet tool: ${name}`) || markedLineIsLive(vfilletLineMarker(name));
   if (!markedLineIsLive(filletLineMarker(name)) && !_ofLive) return false;
   commentMarkedLine(listLineMarker(name));
   commentMarkedLine(filletLineMarker(name));
+  commentMarkedLine(vfilletLineMarker(name));
   commentMarkedLine(`# <- probe offset fillet tool: ${name}`);
   commentMarkedLine(`# <- probe offset fillet union: ${name}`);
   logLine(`'${name}' already has a fillet applied -- commenting it out and re-rendering so new picks land on the right edges…`, 'info');
@@ -5106,7 +5159,7 @@ const probeChangeAcked = {};
 // revertListFilletIfLive) and lets the change proceed. Returns false if
 // the user cancelled.
 async function guardListChange(name) {
-  const filletLive = markedLineIsLive(filletLineMarker(name)) || markedLineIsLive(`# <- probe offset fillet tool: ${name}`);
+  const filletLive = markedLineIsLive(filletLineMarker(name)) || markedLineIsLive(`# <- probe offset fillet tool: ${name}`) || markedLineIsLive(vfilletLineMarker(name));
   const listLive = markedLineIsLive(listLineMarker(name));
   if ((filletLive || listLive) && !probeChangeAcked[name]) {
     const msg = filletLive
@@ -5206,6 +5259,36 @@ probeFilletApplyBtn.addEventListener('click', () => {
   cm.focus();
   probeListStatus.textContent = '';
   logLine(`Inserted \`${varName} = fillet(${varName}, ${name}, ${radius})\` -- rendering…`, 'info');
+  renderScene();
+});
+
+// Variable fillet (auto radius): writes VAR = fillet_variable(VAR, LIST, RADIUS, ...)
+// for the captured edges -- the search for the radius that fits each stretch runs
+// in the backend (see fillet_variable() in brep.py); nothing to write by hand.
+const vfilletStatus = document.getElementById('vfillet-status');
+document.getElementById('vfillet-apply').addEventListener('click', () => {
+  if (probeKind !== 'edges') { vfilletStatus.textContent = 'Switch to Edges mode first.'; return; }
+  const list = currentList();
+  if (!list.length) { vfilletStatus.textContent = 'Capture at least one edge first (click edges in the 3D view).'; return; }
+  const vars = listVars(list);
+  if (vars.length !== 1) { vfilletStatus.textContent = 'Variable fillet needs edges from ONE shape (this list spans ' + vars.length + ').'; return; }
+  const num = (id) => Number(String(document.getElementById(id).value).trim());
+  const radius = num('vfillet-r');
+  if (!Number.isFinite(radius) || radius <= 0) { vfilletStatus.textContent = 'Type a positive radius (e.g. 0.5).'; return; }
+  const keepPct = num('vfillet-keep');
+  const secs = num('vfillet-time');
+  const extra = [];
+  if (Number.isFinite(keepPct) && keepPct >= 0 && keepPct !== 10) extra.push(`min_keep=${keepPct / 100}`);
+  if (Number.isFinite(secs) && secs > 0 && secs !== 60) extra.push(`time_limit=${secs}`);
+  const info = insertListLine();
+  if (!info) return;
+  const { name, varName } = info;
+  const args = [varName, name, String(radius)].concat(extra).join(', ');
+  insertOrReplaceMarkedLine(vfilletLineMarker(name),
+    `${varName} = fillet_variable(${args})  ${vfilletLineMarker(name)}`);
+  vfilletStatus.textContent = 'Applied -- see the console for the radius used on each stretch.';
+  cm.focus();
+  logLine(`Inserted \`${varName} = fillet_variable(${args})\` -- rendering (the radius search can take a minute on long chains)…`, 'info');
   renderScene();
 });
 
