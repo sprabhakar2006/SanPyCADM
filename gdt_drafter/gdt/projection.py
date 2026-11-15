@@ -13,7 +13,7 @@ from OCP.BRepAdaptor import BRepAdaptor_Curve
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.GCPnts import GCPnts_TangentialDeflection
 from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Line
-from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt, gp_Vec
+from OCP.gp import gp_Ax2, gp_Dir, gp_Lin, gp_Pnt, gp_Vec
 from OCP.HLRAlgo import HLRAlgo_Projector
 from OCP.HLRBRep import (HLRBRep_Algo, HLRBRep_HLRToShape, HLRBRep_PolyAlgo,
                          HLRBRep_PolyHLRToShape)
@@ -87,6 +87,53 @@ def _curve(edge, defl):
     if pieces:
         cv["pieces"] = pieces
     return cv
+
+
+def _recover_face_on_circles(shape, N, Vx, Vy, size, defl):
+    """Circular edges (whole circles OR arcs -- a bore opening is often split
+    at the seam of the swept surface) that lie in a plane facing the viewer
+    and are unobstructed. The exact hidden-line pass can lose parts of such
+    edges when the bore surface is tangent to the face boundary; a direct
+    ray test per sample point is robust."""
+    out = []
+    try:
+        from OCP.IntCurvesFace import IntCurvesFace_ShapeIntersector
+        inter = IntCurvesFace_ShapeIntersector()
+        inter.Load(shape, 1e-6)
+        eps = size * 1e-3
+        exp = TopExp_Explorer(shape, TopAbs_EDGE)
+        while exp.More():
+            e = to_edge(exp.Current())
+            exp.Next()
+            a = BRepAdaptor_Curve(e)
+            f, l = a.FirstParameter(), a.LastParameter()
+            n = 48
+            P = [a.Value(f + (l - f) * i / n) for i in range(n + 1)]
+            P = [(q.X(), q.Y(), q.Z()) for q in P]
+            d0 = V.dot(P[0], N)
+            if any(abs(V.dot(q, N) - d0) > size * 1e-4 for q in P):
+                continue                              # not square-on to the view
+            pts2 = [(V.dot(q, Vx), V.dot(q, Vy)) for q in P]
+            cv = _fit_analytic(pts2, defl)
+            if not cv or cv["k"] not in ("C", "A"):
+                continue
+            clear = 0
+            for q in P:
+                o = gp_Pnt(q[0] + N[0] * eps, q[1] + N[1] * eps, q[2] + N[2] * eps)
+                inter.Perform(gp_Lin(o, gp_Dir(*N)), 0.0, size * 20.0)
+                if inter.NbPnt() == 0:
+                    clear += 1
+            if clear >= 0.9 * len(P):
+                out.append(cv)
+    except Exception as exc:                          # never break the drawing
+        try:
+            import os, tempfile, traceback
+            with open(os.path.join(tempfile.gettempdir(), "gdt_recover.log"), "a") as fh:
+                fh.write(traceback.format_exc() + "\n")
+        except Exception:
+            pass
+        return []
+    return out
 
 
 def _snap_radius(r, tol):
@@ -405,6 +452,15 @@ def project_view(part, frame, name, mode="auto", basis=None, shape=None, with_hi
     visible = _merge_arcs(_dedupe([c for c in (_curve(e, defl) for e in vis) if c]))
     tangent = _dedupe([c for c in (_curve(e, defl) for e in tan) if c])
     hidden = _merge_arcs(_dedupe([c for c in (_curve(e, defl) for e in hid) if c]))
+
+    if not use_poly:
+        rec = _recover_face_on_circles(shape, N, Vx, Vy, size, defl)
+        if rec:
+            def _same(c, r):
+                return (c["k"] in ("A", "C") and abs(c["r"] - r["r"]) < 1e-2
+                        and math.hypot(c["c"][0] - r["c"][0], c["c"][1] - r["c"][1]) < 1e-2)
+            visible = [c for c in visible if not any(_same(c, r) for r in rec)]
+            visible = _merge_arcs(_dedupe(visible + rec))
 
     step = max(size / 400.0, 0.05)
     tol = max(size * 2e-4, 0.01)

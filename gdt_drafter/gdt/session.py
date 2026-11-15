@@ -21,7 +21,16 @@ from .projection import project_view
 from .render import Ctx, render
 
 
+MODEL_FRAME = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+
+
 class Session:
+    # When True (set by SanPyCADM's gdt_bridge) the drawing keeps the CAD
+    # model's own axes -- front view = looking along +Y, top = looking down
+    # -Z -- instead of re-orienting the part so its largest face is datum A
+    # at the bottom (which flips parts whose flanges differ).
+    KEEP_MODEL_AXES = False
+
     def __init__(self, path, filename=None, doc=None, standard="ISO"):
         self.path = path
         self.filename = filename or os.path.basename(path)
@@ -34,7 +43,7 @@ class Session:
             body = 0 if len(self.bodies) > 1 else None
             self._analyse(body)
             ptype, datums = self._datums()
-            frame = choose_frame(self.part, ptype, datums)
+            frame = MODEL_FRAME if self.KEEP_MODEL_AXES else choose_frame(self.part, ptype, datums)
             doc = new_document(name, self.filename, ptype, frame, datums, standard)
             doc["settings"]["body"] = body
             self.doc = doc
@@ -240,7 +249,7 @@ class Session:
     def reset_auto(self):
         """Re-detect datums + orientation and regenerate everything."""
         ptype, datums = self._datums()
-        frame = choose_frame(self.part, ptype, datums)
+        frame = MODEL_FRAME if self.KEEP_MODEL_AXES else choose_frame(self.part, ptype, datums)
         self.doc["part"]["type"] = ptype
         self.doc["datums"] = [d.to_dict() for d in datums]
         self.doc["frame"] = {"X": list(frame[0]), "Y": list(frame[1]), "Z": list(frame[2])}

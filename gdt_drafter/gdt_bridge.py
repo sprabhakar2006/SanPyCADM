@@ -56,6 +56,8 @@ def ensure_server():
 def open_step(step_path, name="model.step", standard="ISO"):
     """Open a STEP file as a new drawing; returns the editor URL."""
     server, port = ensure_server()
+    from gdt.session import Session
+    Session.KEEP_MODEL_AXES = True      # drawing views follow the SanPyCADM model's axes
     with open(step_path, "rb") as f:
         data = f.read()
     if not data:
