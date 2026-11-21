@@ -5462,22 +5462,19 @@ document.getElementById('ofillet-apply').addEventListener('click', () => {
   const fvar = 'f_' + name;
   let op = ofilletOp.value;
   if (op === 'auto') op = ofilletConvex === false ? 'add' : 'cut';   // unknown -> cut (the usual "round an edge" case)
-  // CUT: use the thick-skin cutter (d=...), the same recipe that works by hand --
-  // far faster and more robust in the boolean than a pinched wedge whose flat
-  // sides coincide with the solid's faces. ADD: a wedge that overlaps the material.
-  const dv = Math.max(Math.abs(r1), Math.abs(r2));
+  // One smooth fillet solid per edge chain (as_solid=1), in the short form
+  // fillet_by_offset(edges, solid, r [, r2]); union() adds it (inside corner)
+  // and difference() cuts it (outside corner), one piece at a time.
   const cleanArg = ofilletClean.checked ? '' : ', clean_loops=False';
-  const callArgs = op === 'cut'
-    ? `auto_dir=1, d=${dv}${cleanArg}`
-    : `auto_dir=0, as_solid=1${cleanArg}`;
+  const rArgs = (r1 === r2) ? `${r1}` : `${r1}, ${r2}`;
   insertOrReplaceMarkedLine(ofilletLineMarker(name),
-    `${fvar} = fillet_by_offset(${name}, ${varName}, ${varName}, ${r1}, ${r2}, ${callArgs})  ${ofilletLineMarker(name)}`);
+    `${fvar} = fillet_by_offset(${name}, ${varName}, ${rArgs}, as_solid=1${cleanArg})  ${ofilletLineMarker(name)}`);
   if (op === 'cut') {
     insertOrReplaceMarkedLine(ofilletUnionMarker(name),
-      `${varName} = difference(${varName}, swp_c(${fvar}))  ${ofilletUnionMarker(name)}`);
+      `${varName} = difference(${varName}, ${fvar})  ${ofilletUnionMarker(name)}`);
   } else if (op === 'add') {
     insertOrReplaceMarkedLine(ofilletUnionMarker(name),
-      `${varName} = union([${varName}, swp(${fvar})])  ${ofilletUnionMarker(name)}`);
+      `${varName} = union([${varName}, ${fvar}])  ${ofilletUnionMarker(name)}`);
   } else {
     commentMarkedLine(ofilletUnionMarker(name));
   }
@@ -5486,7 +5483,7 @@ document.getElementById('ofillet-apply').addEventListener('click', () => {
   clearOfilletPreview();
   ofilletStatus.textContent = 'Applied. Preview hidden so you can see the result -- tick "Show preview" to see the offset lines again.';
   cm.focus();
-  logLine(`Inserted \`${fvar} = fillet_by_offset(${name}, ${varName}, ${varName}, ${r1}, ${r2}, ...)\` -- rendering…`, 'info');
+  logLine(`Inserted \`${fvar} = fillet_by_offset(${name}, ${varName}, ${rArgs}, as_solid=1)\` -- rendering…`, 'info');
   renderScene();
 });
 
@@ -11211,10 +11208,10 @@ renderScene();
   const RECIPES = [
     { goal: 'Round or bevel an edge of a solid', words: 'round bevel edge corner fillet chamfer smooth radius soften', need: ['fillet_by_offset'],
       steps: [['fillet', 'first choice: rounds the edges you picked'], ['chamfer', 'a flat bevel instead of a round'], ['fillet_by_offset', 'when fillet() fails or you need a blend along a line']],
-      code: '# edges picked with Pick Edges/Faces -> e1\nc = fillet(c, e1, 2)\n# if fillet() fails: blend along a line on the edge\n# f1 = fillet_by_offset(line, c, c, 2, auto_dir=1)\n' },
+      code: '# edges picked with Pick Edges/Faces -> e1\nc = fillet(c, e1, 2)\n# if fillet() fails: blend along a line on the edge\n# f1 = fillet_by_offset(line, c, 2, auto_dir=1)\n' },
     { goal: 'Round a corner of ONE solid along a line', words: 'round corner same solid line edge loop top edge fillet', need: ['fillet_by_offset'],
       steps: [['fillet_by_offset', 'pass the same solid twice, the line along the edge'], ['equidistant_path', 'optional: resample the line for a smoother blend']],
-      code: 'f1 = fillet_by_offset(line, s1, s1, 1, auto_dir=1, closed_loop=1)\n' },
+      code: 'f1 = fillet_by_offset(line, s1, 1, auto_dir=1, closed_loop=1)\n' },
     { goal: 'Fillet between two solids (pipe into plate, boss on wall)', words: 'fillet blend between two solids pipe plate boss wall junction join round intersection', need: ['fillet_by_offset'],
       steps: [['ip_sol2sol', 'the line where they meet'], ['suggest_fillet_dir', 'which side the blend goes'], ['fillet_by_offset', 'builds the blend']],
       code: 'il = ip_sol2sol(a, b)   # the seam line\nf1 = fillet_by_offset(il, a, b, 2, auto_dir=1)\n' },
