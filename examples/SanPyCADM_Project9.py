@@ -31,6 +31,16 @@ s12=swp(translate([-55,0,-10],o_solid([0,1,0],square(60),2,-1)))
 s13=difference(s11,s12)
 s14=swp(translate([0,0,.5],linear_extrude(sec7_3d,-21)))
 s15=difference(s13,s14)
+
+e5 = [s15.edges()[i] for i in [339, 650, 651, 652, 653, 654, 341]]  # <- probe list tool: e5
+f_e5 = fillet_by_offset(e5, s15, 1, as_solid=1)  # <- probe offset fillet tool: e5
+s15 = union([s15, f_e5])  # <- probe offset fillet union: e5
+e6 = [s15.edges()[i] for i in [292, 626, 625, 624, 623, 622, 290]]  # <- probe list tool: e6
+f_e6 = fillet_by_offset(e6, s15, 1, as_solid=1)  # <- probe offset fillet tool: e6
+s15 = union([s15, f_e6])  # <- probe offset fillet union: e6
+e7 = [s15.edges()[i] for i in [407, 655, 721, 722, 720, 668, 404, 417, 635, 723, 724, 725, 622, 420, 365, 688, 687, 686, 685, 680, 361, 375, 705, 706, 707, 708, 709, 377, 729, 731, 733, 736, 737, 692, 441, 442, 446, 447, 703, 742, 743, 748, 751, 765]]  # <- probe list tool: e7
+f_e7 = fillet_by_offset(e7, s15, 1, as_solid=1)  # <- probe offset fillet tool: e7
+s15 = union([s15, f_e7])  # <- probe offset fillet union: e7
 show(s15)
 
 
