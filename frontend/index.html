@@ -1065,6 +1065,8 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
     <span class="tb-sep"></span>
     <div class="tb-group g-run">
       <button id="btn-render" class="primary" title="Ctrl/Cmd + Enter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg><span class="lbl">Render</span></button>
+      <button id="btn-pause-render" title="Pause the running Render before its next line. Everything computed so far stays in memory; edit the code, then press Resume to carry on from that line." disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span class="lbl">Pause</span></button>
+      <button id="btn-resume-render" title="Carry on from the line where the Render was paused (the lines above it are not run again; their results are still in memory). Use Render to run the whole script from the top." style="display:none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16M10 4l10 8-10 8z"/></svg><span class="lbl">Resume</span></button>
       <select id="examples"><option value="">Examples&hellip;</option></select>
     </div>
     <div class="spacer"></div>
@@ -7824,17 +7826,37 @@ function updateKernelUIVisibility() {
   btnResetKernel.style.display = '';
 }
 
+// A restart starts a fresh kernel process, so the 2D sketch variables are
+// re-sent to it straight away (the sketches themselves live here, in
+// sketchSessions) -- stopping a stuck script never loses them.
+// set while a kernel restart (and its sketch restore) is in progress;
+// renderScene() waits for it so a Render can never run before the
+// sketches are back
+let kernelRestartPromise = null;
+
+async function restoreSketchesAfterRestart() {
+  const n = Object.keys(sketchSessions || {}).length;
+  if (!n) return;
+  await reinjectSketchSessions();
+  logLine('2D sketches restored in the new kernel (' + n + ').', 'info');
+}
+
 btnResetKernel.addEventListener('click', async () => {
   const busy = spinner.style.display !== 'none';
   const msg = busy
     ? 'Stop the current Render (it looks stuck) and restart the kernel? '
-      + 'Every variable currently kept in memory between runs will also be '
-      + 'cleared, so anything relying on a previously-computed (and now '
+      + 'Computed variables kept in memory will be cleared (your 2D sketches '
+      + 'are kept), so anything relying on a previously-computed (and now '
       + 'commented-out) result will need to be recomputed on the next Render.'
-    : 'Restart the kernel and clear every variable currently kept in memory '
-      + 'between runs? Anything relying on a previously-computed (and now '
-      + 'commented-out) result will need to be recomputed on the next Render.';
+    : 'Restart the kernel and clear the computed variables kept in memory '
+      + 'between runs? Your 2D sketches are kept. Anything relying on a '
+      + 'previously-computed (and now commented-out) result will need to be '
+      + 'recomputed on the next Render.';
   if (!confirm(msg)) return;
+  // no Render until the new kernel has its 2D sketches back
+  btnRender.disabled = true;
+  let doneRestart;
+  kernelRestartPromise = new Promise((res) => { doneRestart = res; });
   try {
     const resp = await fetch('/reset_kernel', {
       method: 'POST',
@@ -7843,7 +7865,7 @@ btnResetKernel.addEventListener('click', async () => {
     });
     const data = await resp.json();
     updateKernelStatus([]);
-    if (varsPanelActive) renderVarsPanel();
+    setPausedLine(null);     // a paused run can't be resumed in a fresh kernel
     for (const name of [...varPreviews.keys()]) removeVarPreview(name); // nothing left in memory to preview
     logLine(
       busy
@@ -7852,8 +7874,14 @@ btnResetKernel.addEventListener('click', async () => {
         : `Kernel restarted -- ${data.cleared} variable(s) cleared.`,
       'info'
     );
+    await restoreSketchesAfterRestart();
+    if (varsPanelActive) renderVarsPanel();
   } catch (err) {
     logLine('Failed to stop/restart the kernel: ' + err, 'err');
+  } finally {
+    kernelRestartPromise = null;
+    doneRestart();
+    btnRender.disabled = false;
   }
 });
 
@@ -8390,27 +8418,67 @@ function stopProgressPolling() {
   setRunningLine(null);
 }
 
-async function renderScene() {
+// Pause / Resume: the kernel stops cleanly before its next top-level line
+// (python_eval._add_line_checkpoints); Resume re-runs only the lines from
+// there on, using the (possibly edited) code.
+const btnPauseRender = document.getElementById('btn-pause-render');
+const btnResumeRender = document.getElementById('btn-resume-render');
+let pausedLine = null, pausedLineHandle = null;
+function setPausedLine(n) {
+  if (pausedLineHandle !== null) { cm.removeLineClass(pausedLineHandle, 'background', 'cm-paused-line'); pausedLineHandle = null; }
+  pausedLine = n || null;
+  if (pausedLine && pausedLine <= cm.lineCount()) {
+    pausedLineHandle = cm.addLineClass(pausedLine - 1, 'background', 'cm-paused-line');
+    cm.scrollIntoView({ line: pausedLine - 1, ch: 0 }, 60);
+  }
+  btnResumeRender.style.display = pausedLine ? '' : 'none';
+}
+btnPauseRender.addEventListener('click', async () => {
+  btnPauseRender.disabled = true;
+  try {
+    await fetch('/pause_render', { cache: 'no-store' });
+    logLine('Pausing -- the Render stops before its next line (a line that is still running finishes first; use Stop / Restart Kernel for a line that is stuck).', 'info');
+  } catch (e) { logLine('Could not pause: ' + e, 'err'); }
+});
+btnResumeRender.addEventListener('click', () => {
+  if (pausedLine) renderScene({ startLine: pausedLine });
+});
+
+async function renderScene(opts) {
+  const startLine = (opts && opts.startLine) || null;
+  if (kernelRestartPromise) await kernelRestartPromise;   // sketches first
+  // the Render button (or any other caller) runs the whole script
+  setPausedLine(null);
   clearConsole();
   clearErrorLine();
   clearDebugMeshMarks();
   setStatus('busy', 'rendering…');
   spinner.style.display = 'flex';
   btnRender.disabled = true;
+  btnPauseRender.disabled = false;
   const code = cm.getValue();
   const _renderT0 = performance.now();
+  if (startLine) logLine('Resuming from line ' + startLine + ' (lines above it are not run again).', 'info');
   startProgressPolling();
   try {
     const resp = await fetch('/render', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, ...getDisplayToleranceOverrides() })
+      body: JSON.stringify({ code, start_line: startLine || undefined, ...getDisplayToleranceOverrides() })
     });
     const data = await resp.json();
     updateKernelStatus(data.persisted_vars);
     if (varsPanelActive) renderVarsPanel();
     for (const name of [...varPreviews.keys()]) await refreshVarPreview(name); // redraw with any updated values
-    if (data.error) {
+    if (data.error && /automatically restarted/.test(data.error)) await restoreSketchesAfterRestart();
+    if (data.paused_line) {
+      setStatus('ok', 'paused at line ' + data.paused_line);
+      for (const e of data.echo || []) logLine(e, 'echo');
+      logLine('Paused before line ' + data.paused_line + '. Everything computed so far is kept in memory. '
+        + 'Edit the code if you like, then press Resume to carry on from line ' + data.paused_line
+        + ' (or Render to run the whole script again).', 'info');
+      setPausedLine(data.paused_line);
+    } else if (data.error) {
       setStatus('err', 'error');
       logLine(data.error, 'err');
       if (data.error_line) {
@@ -8454,6 +8522,7 @@ async function renderScene() {
     stopProgressPolling();
     spinner.style.display = 'none';
     btnRender.disabled = false;
+    btnPauseRender.disabled = true;
     const _secs = (performance.now() - _renderT0) / 1000;
     const _slow = finishLineTimes();
     for (const [n, t] of _slow) {
@@ -11054,6 +11123,7 @@ renderScene();
 </script>
 <style>
   .cm-error-line { background: rgba(255, 107, 107, 0.18) !important; }
+  .cm-paused-line { background: rgba(80, 160, 255, 0.22) !important; box-shadow: inset 3px 0 0 #3d8bfd; }
   .cm-running-line { background: rgba(255, 196, 0, 0.22) !important; box-shadow: inset 3px 0 0 #ffc400; animation: cmRunPulse 1.1s ease-in-out infinite; }
   @keyframes cmRunPulse { 50% { background: rgba(255, 196, 0, 0.08) !important; } }
   .cm-debug-mesh-mark {
