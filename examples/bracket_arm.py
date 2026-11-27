@@ -1,0 +1,24 @@
+p1=rot('x90',path1)
+s1=swp(sweep_sec2path(sec1,p1))
+s2=swp(sweep_sec2path(sec2,p1))
+e1 = [s1.edges()[i] for i in [21]]  # <- probe list tool: e1
+s1 = fillet(s1, e1, 10)  # <- probe fillet tool: e1
+e2 = [s2.edges()[i] for i in [21]]  # <- probe list tool: e2
+s2 = fillet(s2, e2, 10)  # <- probe fillet tool: e2
+s3=union([s1,s2])
+s4=swp(surface_line_vector(sec3_3d,[0,10,0]))
+s5=difference(s3,s4)
+e3 = [s5.edges()[i] for i in [51]]  # <- probe list tool: e3
+s5 = fillet(s5, e3, 10)  # <- probe fillet tool: e3
+e4 = [s5.edges()[i] for i in [44, 46]]  # <- probe list tool: e4
+s5 = fillet(s5, e4, 10)  # <- probe fillet tool: e4
+pl1=swp_surf(plane_from_equation([-1,0,0,132-25]))
+s6=swp(surface_line_vector(sec4_3d,[-25,0,0]))
+s7=union([s5,s6])
+s8=swp(surface_line_vector(sec5_3d,[-25,0,0]))
+s9=difference(s7,s8)
+s10=[swp(surface_line_vector(p,[10,0,0])) for p in sec6_3d]
+s11=difference(s9,*s10)
+s12=[swp(surface_line_vector(p,[0,0,-50])) for p in sec7_3d]
+s13=difference(s11,*s12)
+show(s13)
