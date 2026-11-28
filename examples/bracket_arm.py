@@ -17,8 +17,8 @@ s6=swp(surface_line_vector(sec4_3d,[-25,0,0]))
 s7=union([s5,s6])
 s8=swp(surface_line_vector(sec5_3d,[-25,0,0]))
 s9=difference(s7,s8)
-s10=[swp(surface_line_vector(p,[10,0,0])) for p in sec6_3d]
+s10=[swp(solid_line_vector(p,[10,0,0])) for p in sec6_3d]
 s11=difference(s9,*s10)
-s12=[swp(surface_line_vector(p,[0,0,-50])) for p in sec7_3d]
+s12=[linear_extrude(p,-50) for p in sec7_3d]
 s13=difference(s11,*s12)
 show(s13)
