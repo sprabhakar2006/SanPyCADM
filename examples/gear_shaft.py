@@ -25,7 +25,10 @@ part = union([body, intersection(teeth, disc)])
 # Detail C: centre hole in the end -- 60 deg countersink to Ø3, pilot Ø1.15 x 3
 cs = translate([0, 0, L - 1.6], swp(cylinder(r1=0.575, r2=2.1, h=2.64)))
 pilot = translate([0, 0, L - 3], swp(cylinder(d=1.15, h=3.5)))
-part = difference(part, group([cs, pilot]))
+# the same centre hole at the other end (mirror of the one above)
+cs1 = translate([0, 0, -1.04], swp(cylinder(r1=2.1, r2=0.575, h=2.64)))
+pilot1 = translate([0, 0, -0.5], swp(cylinder(d=1.15, h=3.5)))
+part = difference(part, group([cs, pilot, cs1, pilot1]))
 
 part = rot('y90', part)       # lay it along x
 show(part)
