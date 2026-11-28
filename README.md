@@ -32,7 +32,7 @@ It is a single download. Python, every library, the editor and the 3D viewer are
 | macOS (Apple Silicon) | [**SanPyCADM-mac-arm64.zip**](https://github.com/sprabhakar2006/sanpycadm/releases/latest/download/SanPyCADM-mac-arm64.zip) | unzip, double-click `SanPyCADM.app` |
 | Windows 10/11 (x64) | [**SanPyCADM-win-x64.zip**](https://github.com/sprabhakar2006/sanpycadm/releases/latest/download/SanPyCADM-win-x64.zip) | unzip, open the folder, double-click `SanPyCADM.exe` |
 
-All builds are on the [releases page](https://github.com/sprabhakar2006/sanpycadm/releases).
+All builds are on the [releases page](https://github.com/sprabhakar2006/sanpycadm/releases). The [Installing SanPyCADM](https://youtu.be/7fmilrXpGyI) video walks through it.
 
 > **First launch.** The app isn't signed by Apple or Microsoft yet, so the first launch shows a warning.
 > **macOS:** right-click `SanPyCADM.app` → **Open** → **Open** (once only).
@@ -52,7 +52,7 @@ show(difference(a, b))
 
 Both shapes are exact B-rep solids, so you can now click **Pick Edges/Faces**, select the edges of the hole and fillet them.
 
-Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 17, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
+Now a real part. Choose **SanPyCADM Project5** from the **Examples** dropdown (one of 29, see [Examples](#examples-and-video-tutorials)): a multi-part housing built from sketched profiles, swept and extruded bodies, bolt holes and bosses, then finished with `fillet()` and offset fillets. Each stage is a few lines of script:
 
 ```python
 s9  = difference(union([swp(s6), swp(s7)]), swp(s8), swp(c1))   # body with cut-outs
@@ -62,7 +62,7 @@ s25 = fillet(s25, e1, 1)
 show(s25)
 ```
 
-While a script runs, the line being executed is highlighted in the editor, so you can see where a slow step is.
+While a script runs, the line being executed is highlighted in the editor, so you can see where a slow step is. Press **Pause** to stop before the next line, edit the code, then **Resume** from that line; everything computed so far stays in memory.
 
 ## Choose per shape: B-rep or mesh
 
@@ -79,7 +79,7 @@ SanPyCADM never switches to a mesh behind your back: shapes stay exact B-rep unl
 
 ## Examples and video tutorials
 
-The **Examples** dropdown in the toolbar loads **17 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
+The **Examples** dropdown in the toolbar loads **29 ready-made models**. Most come with the 2D sketches they were built from, so you can render one and then read how it was built:
 
 | Example | What it shows |
 |---|---|
@@ -87,7 +87,8 @@ The **Examples** dropdown in the toolbar loads **17 ready-made models**. Most co
 | `cup` | A turned cup: `prism()`, `split()` and offset lines |
 | `hollow_cylinder_with_star` | `solid_line_vector()` extrusions, plane cuts and a star cut-out |
 | `split_demo` | Cutting a solid with `split(..., keep="top")` |
-| `wavy_tray_fillet` | A wavy tray with an offset-based fillet (`fillet_by_offset`); the model from the SanPyCADM Project 4 video |
+| `wavy_box` | A wavy-walled box: a `sinewave()` surface wrapped around a rounded path with `wrap_surface_around_path`, offset to a shell, split by a plane and filleted |
+| `hook` | A hook from a split sphere with sketched cuts, `fillet()` and an offset fillet (`fillet_by_offset`) round the lip, then `resize_solid()` to the final size |
 | `SanPyCADM Project3` | A plate with a pocket and a pattern of sketched holes, with `fillet()` and `chamfer()` on picked edge lists |
 | `SanPyCADM Project5` | A multi-part housing: swept body, bolt holes, bosses, `fillet()` and offset fillets, built step by step |
 | `SanPyCADM Project6` | A flanged ball-valve body: a spherical shell with three bolted flanges built from sketched profiles, joined with `union`/`difference`, blended with offset fillets (`fillet_by_offset`) and finished with `chamfer()` |
@@ -98,6 +99,17 @@ The **Examples** dropdown in the toolbar loads **17 ready-made models**. Most co
 | `SanPyCADM Project11` | A bent, split and filleted bracket: `split()` with a plane, a `surface_line_vector` arm joined by `union`, large `fillet()` radii, then rows of sketched slots cut with `difference` |
 | `SanPyCADM Project12` | A pipe fitting: a cylinder joined to a swept branch and a flange with `union`, a hand-built blend at the junction (`o_3d` + `convert_3lines2fillet`), then bores cut with `cylinder` and `difference` |
 | `SanPyCADM Project13` | A woven lamp shade: 20 tapered strands swept along a `bezier()` curve with `swp()`, rotated around the axis and mirrored to cross, on a ring base. Pure script, no sketches; change `n` and `t` to restyle it |
+| `SanPyCADM Project14` | A hollow knob: a `prism()` body with three sketched cut-outs, rounded with `fillet()` and `fillet_variable()`, then one face removed and the rest thickened into a 1 mm wall (`shell_from_faces` + `thicken_shell`) |
+| `SanPyCADM Project15` | An extruded plate with sketched holes, a second plate on a side face (`surface_line_vector`) and a pipe swept along a path (`sweep_sec2path`), bored out with `difference` |
+| `SanPyCADM Project16` | A block with two sketched slots, and a lug built on a side plane with sketched holes and a `cylinder` cut-out, joined with `union` |
+| `bracket_arm` | A bracket arm from one T-section swept along one path, with sketched cuts on its faces and `fillet()` on picked edges |
+| `pipe_elbow` | A 45-degree flanged pipe elbow: a circle swept along a sketched path, two bolted flanges, a bore, and fillets at the flange roots |
+| `pipe_junction` | A pipe junction with a bottom flange, a curved branch to a top flange and side lugs, all from sketches, finished with `fillet_variable()`, `fillet()` and `chamfer()` |
+| `soap_dish` | A draining soap dish: a perforated insert with spikes resting on posts in a tray, each shell one `prism()` with every rounding in its 2D sketches |
+| `cradle_block` | A cradle block from a 3-view drawing: base with an arch, two uprights with a round cradle, a through hole and pockets |
+| `angle_bracket` | A 120-degree angle bracket with a rib, a slot and counterbored holes, from a drawing |
+| `pipe_clamp` | A split pipe clamp with a bolted lug and a chamfered front, built from exact cylinders so the fillets hold |
+| `gear_shaft` | A gear shaft: a turned shaft with a square end, an 18-tooth gear from a sketch with chamfered tooth ends, and centre holes in both ends |
 | `tap` | A threaded tap: `helix()` + `sweep_sec2path()` cutter, fast mesh boolean with `as_mesh()` |
 | `brep_tap` | The same tap as an exact B-rep |
 
@@ -105,25 +117,29 @@ Every example is a plain `.py` file in the `examples/` folder, and the sketches 
 
 The **[YouTube channel](https://www.youtube.com/@sanjeevprabhakar3837/videos)** has step-by-step modeling sessions recorded in the app itself: the 2D sketch first, then the script written line by line, then Pick Edges/Faces and the fillets.
 
+To get started, watch [SanPyCADM](https://youtu.be/39NmMVzsJkM), [Installing SanPyCADM](https://youtu.be/7fmilrXpGyI) and [SanPyCADM important concepts](https://youtu.be/EUdMx7DbYAY).
+
 | Video | Example in the app |
 |---|---|
-| [SanPyCADM Project 1](https://youtu.be/waSNXv0eEF8) | not included |
 | [SanPyCADM Project 2](https://youtu.be/uJZ9jHFqYiQ) | not included |
 | [SanPyCADM Project 3](https://youtu.be/7K8bWrsFq4w) | `SanPyCADM Project3` |
-| [SanPyCADM Project 4](https://youtu.be/ksuRJgnGJIk) | `wavy_tray_fillet` |
 | [SanPyCADM Project 7](https://youtu.be/s36XOSCyl9Y) | `SanPyCADM Project7` |
 | [SanPyCADM Project 8](https://youtu.be/fBgigryKavI) | `SanPyCADM Project8` |
 | [SanPyCADM Project 9](https://youtu.be/XPLlQ9QJJwA) | `SanPyCADM Project9` |
+| [SanPyCADM Project 10](https://youtu.be/KFkZM5buWSI) | `SanPyCADM Project10` |
+| [Application variable fillet. SanPyCADM Project14](https://youtu.be/X0tqnVrLbXI) | `SanPyCADM Project14` |
+| [hook](https://youtu.be/KUJ8qi3B2Aw) | `hook` |
+| [Wavy box](https://youtu.be/O3v4jYTYfwQ) | `wavy_box` |
 
-`SanPyCADM Project5` and `SanPyCADM Project6` are in the Examples dropdown too, and don't have a video yet. Projects 1 and 2 are not included as examples.
+The other examples don't have a video yet.
 
 ## How a model usually comes together
 
 1. **Sketch the profile.** Open **2D Sketch**, draw the outline with lines, arcs, tangent arcs and rounded corners, and click **Send to SanPyCAD**. The profile lands in your script as a variable such as `sec1`. To sketch on an existing part, use **Sketch on Face**.
 2. **Make it 3D.** `linear_extrude()`, `prism()`, sweeps along a path or a `helix()`, lofts between sections.
 3. **Combine.** `union()`, `difference()`, `intersection()`, `hull()`, `split()`.
-4. **Refine.** Click **Pick Edges/Faces** to get edge and face indices, apply `fillet()` and `chamfer()`, or auto-pick seams.
-5. **Check and export.** Measure, add dimensions, open **GD&T** for a full drawing with front, top and side views, then export STEP, STL, OBJ, SVG or DXF.
+4. **Refine.** Click **Pick Edges/Faces** and pick the edges in the 3D view; the probe tool writes the edge list and the fillet into the script, for example `e1 = [part.edges()[i] for i in [12, 15]]` and `part = fillet(part, e1, 2)`. `chamfer()`, `fillet_variable()` and offset fillets work the same way.
+5. **Check and export.** Set a material and print the mass properties, measure, add dimensions, open **GD&T** for a full drawing with front, top and side views, then export STEP, STL, OBJ, SVG or DXF.
 
 ## Features
 
@@ -138,8 +154,13 @@ Click edges and faces in the 3D view to get their indices, hover a chip to highl
 
 If an OCCT fillet fails, the error now names the edges that don't fit and roughly how large a radius each can take, and `fillet(shape, edges, r, on_fail="skip")` or `on_fail="shrink"` can round what works or retry smaller.
 
+`fillet_variable(shape, edges, r)` rounds every edge at `r` where it fits and, on the edges that can't take it, uses the largest radius that does, with smooth transitions between them. The console lists the radius each edge chain got.
+
 ### Offset fillet with live preview
 For corners where an OCCT fillet won't work, use **Offset fillet (live preview)** inside the Pick Edges/Faces panel. Pick the edge chain, set an offset for each of the two faces, and the 3D view shows the two offset lines (cyan and orange) with arrows pointing away from the edge, before anything is built. Flip a side with one click, let it detect an outer edge (cut) or inner corner (add) automatically, and remove self-crossing loops at corners. **Apply** writes the `fillet_by_offset(...)` code into the script.
+
+### Materials and mass properties
+`materials()` lists the built-in materials (steel, aluminium, brass, ABS, PLA and more, each with a density and display colour). `material(part, "steel")` assigns one to a solid and colours it in the view; pass `density=` (g/cm³) for anything else. `mass_properties(part)` prints the volume, surface area, mass, centre of mass and moments of inertia to the console, and returns them as a dictionary.
 
 ### Profile checks
 `linear_extrude()`, `prism()`, `rotate_extrude()` and `extrude_on_plane()` warn in the console when a 2D profile is open or crosses itself, the usual cause of spiky end caps. `clean_profile(sec)` trims the overshoot and closes it, and `check_profile(sec)` reports the problem on its own.
@@ -151,7 +172,7 @@ For corners where an OCCT fillet won't work, use **Offset fillet (live preview)*
 - The **Find function** palette (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>) searches by task.
 
 ### A notebook-style kernel
-Variables persist between renders, so a slow step can run once, be commented out, and everything after it iterated on for free. <kbd>Tab</kbd> completes function names and <kbd>Shift</kbd>+<kbd>Tab</kbd> shows a signature and docs.
+Variables persist between renders, so a slow step can run once, be commented out, and everything after it iterated on for free. **Pause** stops a Render before its next line and **Resume** carries on from there after you edit the code. If a line gets stuck, **Stop / Restart Kernel** interrupts it; your 2D sketches are kept and sent back to the new kernel. <kbd>Tab</kbd> completes function names and <kbd>Shift</kbd>+<kbd>Tab</kbd> shows a signature and docs.
 
 ### Measure, dimension, draw
 Measure vertices and edges and place labelled dimensions in the 3D view. For engineering drawings (views, sections, dimensions, datums and geometric tolerances) use **GD&T** (below).
@@ -174,7 +195,7 @@ Export STL, OBJ, STEP, SVG and DXF. Scripts are plain `.py` files, openable in a
 ## Known limitations
 
 - No OpenSCAD-text mode and no `fo()`.
-- Mesh import (`import_mesh`, `import_profile(s)`) and `resize` are not ported yet.
+- Mesh import (`import_mesh`, `import_profile(s)`) and the mesh `resize` are not ported yet; for B-rep solids use `resize_solid()`.
 - Exact B-rep cuts with long, nearly touching multi-turn threads are unreliable in OpenCASCADE; use `as_mesh()` for those.
 - Mesh results cannot be filleted or exported as exact STEP.
 - Builds aren't signed or notarized yet, hence the first-launch warnings.
